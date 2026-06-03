@@ -10,3 +10,4 @@ userID,empresaID,nombre,apellidos,nombreUsuario,contrasena,email,tieneCoche,mode
 9,101,prueba,Mendizabal,prueba,123456,prueba@ecomove.eus,true,DACIA_SANDERO_G,Bilbo
 10,101,Nerea,Mendizabal,prueba3,123456,prueba3@ecomove.eus,true,LAND_ROVER_DISCOVERY_SPORT_D,Bilbo
 11,101,mai,nico,mai,12345,mai@ecomove.eus,true,TESLA_MODEL_X,Oñati
+12,101,alex,hers,alex,12345,alex@ecomove.eus,true,CITROEN_C5_AIRCROSS_D,Antzuola
