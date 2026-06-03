@@ -1,0 +1,232 @@
+stop_id,stop_code,stop_name,stop_lat,stop_lon,zone_id,location_type
+801,,Oiartzun - Lanbarren Industrialdea,43.32061897246799,-1.8671936965484162,1,0
+1604,,Hondarribia - Itsasargi Kalea 3,43.369383373769224,-1.7937606107157493,9,0
+1605,,"Hondarribia - Bernat Etxepare, Correos",43.36599558283523,-1.7927046254576002,9,0
+1606,,Hondarribia - Sabin Arana Goiri Kalea 3 Parean,43.361860834545126,-1.7899851784442424,9,0
+1608,,Hondarribia - Amutea Auzoa 8,43.35124333746972,-1.798401620190664,9,0
+1001,,"Pasaia - Nafarroa Etorbidea, Pasai Antxo (renfe)",43.31891850231326,-1.9175419620799106,1,0
+704,,Errenteria - Gamon Zumardia,43.31282519653389,-1.8970938675056273,1,0
+705,,"Errenteria - Nafarroa Hiribidea 2, Gabierrota",43.3106574674379,-1.8908196763756802,1,0
+802,,Oiartzun - Gi-636 Lintzirin,43.313414454480856,-1.877143332490615,1,0
+1401,,Lezo - Gaintxurizketa Gaina,43.32997928678298,-1.8505158383912153,1,0
+4,,"Donostia - Nafarroa Hiribidea 31, Jesuitak",43.323287275284855,-1.9673777150593288,1,0
+5,,"Donostia - Zurriola Pasealekua, Kursaal",43.32471386109116,-1.9768258379997177,1,0
+707,,Errenteria - Diputazio Plaza,43.31495907228321,-1.9026908683136847,1,0
+708,,Errenteria - Kaputxinoak (biribilgunea),43.317662737700516,-1.9123600386681574,1,0
+1002,,Pasaia - Oleta / Escalerillas,43.32137346010632,-1.9315580192183772,1,0
+8,,"Donostia - Nafarroa Hiribidea 7, Okendo Kultur Etxea",43.325492714214626,-1.9703004829618005,1,0
+13,,Donostia - Mirakruz Gaina,43.32140127990095,-1.950118744122049,1,0
+14,,Donostia - Ategorrieta 65,43.321961283054534,-1.9621462530989158,1,0
+105,,Donostia - Buenavista Hiribidea 14 Parean,43.320912799648276,-1.921810745368575,1,0
+106,,"Donostia - Jose Elosegi Alkatearen Hiribidea, Herrera",43.31992082684529,-1.9389831147785055,1,0
+107,,"Donostia - Jose Elosegi Alkatearen Hiribidea 107 Parean, Gaiztarro",43.320718748845614,-1.9434707345584772,1,0
+109,,Donostia - Gipuzkoa Plaza 10,43.32129166988961,-1.9818164810487937,1,0
+1617,,Hondarribia - Foru Kalea 3,43.37208946174641,-1.7942130468304602,9,0
+724,,Errenteria - Lartzabal Auzoa 1 Parean,43.31080650783253,-1.8848488221677788,1,0
+1632,,Hondarribia - Jaitzubia-bidasoa Ospitalea (donostirantz),43.34431010183923,-1.816551343839748,9,0
+1407,,Lezo - Errekalde Bailara,43.32677703470468,-1.8571379706834237,1,0
+1,,Donostia - Mirakruz Kalea 26,43.32221794136212,-1.9736240958890077,1,0
+2,,"Donostia - Jose Elosegi Alkatearen Hiribidea, Mirakruz Gaina",43.321311353548204,-1.9481716763184493,1,0
+3,,"Donostia - Jose Elosegi Alkatearen Hiribidea 128a, Herrera Euskotren",43.31995920486696,-1.9382671480185172,1,0
+1000,,Pasaia - Nafarroa Hiribidea 5,43.31928783700205,-1.9185096801472556,1,0
+701,,Errenteria - Kaputxinoak,43.31746346884393,-1.9112906894249058,1,0
+702,,Errenteria - Gamon Zumardia,43.31264240309675,-1.8968135546826423,1,0
+703,,"Errenteria - Nafarroa Hiribidea (irunerantz), Gabierrota",43.31051467436056,-1.8890959590120693,1,0
+800,,Oiartzun - Lintzirin Poligonoa 12,43.3144784438379,-1.875458972551504,1,0
+1602,,Hondarribia - Sabin Arana Goiri Kalea 3,43.36173479944265,-1.789987683581053,9,0
+1603,,"Hondarribia - Sabin Arana Goiri Kalea, Ama Guadalupekoa Ikastetxea",43.3655686864057,-1.7923551764404733,9,0
+1607,,Hondarribia - Aireportu Kanpoaldea,43.356739518737506,-1.7944553727402015,9,0
+803,,Oiartzun - Lanbarren Industrialdea,43.319598633640915,-1.867816954783325,1,0
+6,,"Donostia - Ategorrieta Hiribidea 64, Jai Alai",43.32206338925769,-1.9664611247160513,1,0
+7,,Donostia -  Oleta / Escalerillas,43.32125158141718,-1.9310421692408037,1,0
+706,,Errenteria - Lartzabal Auzoa 3,43.31043077576116,-1.8841774984805524,1,0
+1009,,Pasaia - Nafarroa Etorbidea 24,43.318180510120314,-1.9156805432452586,1,0
+718,,"Errenteria - Nafarroa Hiribidea 75, Iztieta",43.31482296348122,-1.9025823323706748,1,0
+108,,Donostia - Jose Elosegi Alkatearen Hiribidea 111,43.32051053949768,-1.9433510142160433,1,0
+1612,,Hondarribia - Amutea Auzoa 8 Parean,43.35119650983881,-1.7982297977317236,9,0
+1516,,Hondarrbia - Jaitzubia-bidasoa Ospitalea (hondarribirantz),43.34409429419638,-1.8165802117342074,9,0
+138,,"Donostia - Buenavista Hiribidea 14, Buenavista",43.320777522352444,-1.921788471956086,1,0
+141,,"Donostia - Jose Elosegi Alkatearen Hiribidea 5 Parean, Ategorrieta",43.32170964752513,-1.959227592535043,1,0
+1624,,"Hondarribia - Donostia Kalea 2, Madalengain",43.368080553993956,-1.7957365388174222,9,0
+1627,,"Hondarribia - Donostia Kalea 36, Sokoa",43.371668061357084,-1.7969492392099027,9,0
+1591,,Irun - Gaintxurizketa Gaina,43.33013160661321,-1.848650414354024,9,0
+1408,,Lezo - Perrene Auzoa,43.32741413234642,-1.8551155458030537,1,0
+1601,,Hondarribia - Aireportua,43.35696057142845,-1.7932169763186865,9,0
+128,,"Donostia - Bizkaia Pasealekua 2, Mundaiz Zubia",43.31091220201923,-1.9790920151163824,1,0
+143,,Donostia - Maria Cristina Zubia,43.31770837825577,-1.9788425754453525,1,0
+145,,Donostia - Loiolako Erribera Pasealekua,43.30924909801426,-1.9733614717617547,1,0
+1633,,Hondarribia - Sabin Arana Goiri 8 Parean,43.36463882781542,-1.791275208567144,9,0
+1504,,"Irun - Letxunborro Hiribidea, Suhiltzaileak",43.33018989306063,-1.823412345082884,9,0
+1611,,Hondarribia - Mendelu Kalea 24,43.34724074281115,-1.801392408743617,9,0
+1511,,Irun - Puiana Hiribidea 18,43.340486167177644,-1.812492778965567,9,0
+1621,,Hondarribia - Minasoroeta-zumardia,43.361312191561,-1.792600050924699,9,0
+1518,,"Hondarribia - Zubieta Kalea 16, Gibeleta",43.34422617741402,-1.8050172995016573,9,0
+1520,,"Irun - Jaitzubia Auzoa 154, Bidasoa Ospitalea",43.3416733503616,-1.8149617325071419,9,0
+1623,,Hondarribia - Kosta Kalea 17,43.355777898897415,-1.7980529995595245,9,0
+1628,,Hondarribia - Santa Engrazia Auzoa 8,43.36073596061579,-1.795166058407642,9,0
+1525,,"Irun - Ventas Auzoa 80a, Txingudi Merkatalgunea",43.32039825215626,-1.8362424539470688,9,0
+1526,,Irun - Araso Industrialdea,43.32319110621848,-1.833734798083226,9,0
+1528,,Irun - Elizatxo Hiribidea 54,43.33148312164569,-1.8100285282255877,9,0
+1530,,"Irun - Gobaragin Kalea 4, Lavanderas",43.333782547152204,-1.8077508997862488,9,0
+1534,,Irun - Aldabe Mendia Kalea 49 Parean,43.3383717688585,-1.8109179178952364,9,0
+1537,,"Irun - Pedro Manuel De Arístegui Y Petit Enbajadorea Plaza 9, Embajador Aristegi",43.339686762653315,-1.811817505475135,9,0
+1594,,Irun- Molino Errepidea (donostiarantz),43.331257235249566,-1.8142885118171648,9,0
+1502,,"Irun - Elizatxo Hiribidea, Bentak (arretxe-ugalde Biribilgunea)",43.33100324335291,-1.8141084293897352,9,0
+1600,,"Hondarribia - Amute Auzoa 49, Kaputxinoak",43.3528691689026,-1.7980240373867364,9,0
+1609,,Hondarribia - Mendelu Kalea 17,43.347148777598846,-1.8012091453788275,9,0
+1613,,Hondarribia - Kosta Kalea 3 Hondarribirantz,43.35811705353357,-1.797007247377622,9,0
+1626,,"Irun - Letxunborro Hiribidea, Gibeleta",43.34367394475223,-1.8055956580426582,9,0
+1629,,Hondarribia - Minasoroeta Kalea 11,43.361133556325385,-1.793590877214878,9,0
+1529,,"Irun - Gobaragin Kalea 4 Parean, Lavanderas",43.33375399632719,-1.8076034324151151,9,0
+1531,,"Irun - Andrearriaga Ibilbidea 14, Elatzeta Eskola",43.32850237456963,-1.8195595744886544,9,0
+1532,,"Irun - Elizatxo Hiribidea, Piketazaharra",43.33196736396871,-1.8072436668489869,9,0
+1535,,Irun - Aldabe Mendia Kalea 49,43.3382973110759,-1.8106849790861463,9,0
+1527,,"Irun - Mazuola Kalea 2 Parean, Araso Industrialdeko Sarrera",43.324758420701045,-1.8355548640710804,9,0
+131,,"Donostia - Urumea Pasalekua 15, Aldunaene",43.30860739944981,-1.9761096332342565,1,0
+149,,Donostia - Riberas De Loiola 12-14,43.3114280821713,-1.9733494540145946,1,0
+173,,Donostia - Renfe Geltokia,43.317747301849664,-1.9771523983303527,1,0
+1006,,"Pasai San Pedro - Euskadi Etorbidea, Gudarien Plaza",43.323173844965744,-1.9305397940812852,1,0
+1007,,Pasai San Pedro - Euskadi Etorbidea 25,43.322905416948345,-1.933615503281922,1,0
+1008,,Pasai San Pedro - Euskadi Etorbidea 1,43.32243849535796,-1.9366576479482125,1,0
+11,,"Donostia - Pasai San Pedro 25, Bidebieta",43.3220550344267,-1.9399696241363997,1,0
+20,,"Donostia - Aita Donostia Plaza, Anoeta",43.302781858526444,-1.975147094626347,1,0
+68,,"Donostia - Miramon Pasealekua, Poliklinika Ii",43.29026241603562,-1.9798319542171547,1,0
+70,,"Donostia - Begiristain Doktorea, Ospitalea Ii",43.293043046843835,-1.9705893018841374,1,0
+111,,Donostia - Zorroaga 39 - Illunbe,43.300773554015905,-1.9681040614392507,1,0
+112,,Donostia - Ospitalea,43.29355568923511,-1.9685219771984255,1,0
+115,,"Donostia - Barcelona Hiribidea, 15",43.3090553020438,-1.9718357466420082,1,0
+1012,,Pasai San Pedro - Esnabide Kalea 6,43.324879406218706,-1.92613139657749,1,0
+134,,"Donostia - Begiristain Doktorea 218, Onkologikoa",43.291552849904306,-1.9741029802303793,1,0
+1019,,Pasaia - Molinao,43.31559349643553,-1.91634314017224,1,0
+10,,Donostia - Bidebieta,43.32190984282394,-1.9398488173632222,1,0
+1003,,Pasai San Pedro - Euskadi Etorbidea 3,43.32234278636848,-1.9370169807583197,1,0
+1004,,"Pasai San Pedro - Euskadi Etorbidea, Azoka",43.32282335491318,-1.9335059389061615,1,0
+1005,,"Pasai San Pedro - Euskadi Etorbidea 61 Parean, Gudarien Plaza",43.3230620028452,-1.9301347551098738,1,0
+34,,Donostia - Toribio Altzaga Kalea - Arcco,43.305010381163264,-1.9736300877298512,1,0
+69,,"Donostia - Begiristain Doktorea 115, Ospitalea",43.29279007053137,-1.9704949511234529,1,0
+114,,"Donostia - Begiristain Doktorearen Pasealekua, Begiristain Ii",43.30091682589823,-1.9680153359087278,1,0
+117,,Donostia - Barcelona Hiribidea 28,43.31112602612656,-1.9718008377610465,1,0
+126,,"Donostia - Begiristain Doktorea 121, Onkologikoa",43.29165602253575,-1.9735588567964795,1,0
+12,,"Donostia -  Jose Elosegi Alkatearen Hiribidea 101 Parean, Elosegi 283",43.32138233492827,-1.9451241934960837,1,0
+121,,"Donostia - Kolon Pasalekua 13, Gros",43.323023587065514,-1.9771132083834033,1,0
+124,,"Donostia - Okendo Kalea, 18",43.32147326803109,-1.9809748003998298,1,0
+1014,,Pasai San Pedro - Ricardo Arrillaga Kalea  6,43.32419384342872,-1.9298435517836503,1,0
+1015,,Pasai San Pedro - Gran Sol Kalea 3,43.324931276292666,-1.9307063014116181,1,0
+1016,,Pasai San Pedro - Bordaenea Kalea 2,43.32581839445231,-1.9321708103083715,1,0
+1017,,Pasai San Pedro - Oiartzun Kalea 8,43.32471812744438,-1.9339168025587252,1,0
+1018,,Pasai San Pedro - Ulia Etorbidea 22,43.32557217212196,-1.9376390299065362,1,0
+151,,Donostia - Azkuene Kalea 35,43.32573278113176,-1.9384502686438476,1,0
+152,,Donostia - Azkuene Kalea 19,43.324483951333214,-1.9377813317577237,1,0
+15,,Donostia - Antso Jakitunaren Hiribidea 26,43.30880305759435,-1.9798671487451063,1,0
+19,,"Donostia - Mendeurrenaren Plaza, Centenario",43.312670035400096,-1.98032037853424,1,0
+160,,Donostia - Urbieta Kalea 50,43.31467708932894,-1.981224025824442,1,0
+9,,"Donostia - Jose Elosegi Alkatearen Hiribidea 102, Elosegi 102",43.32117367225726,-1.9449551421415654,1,0
+700,,Errenteria - Beraun Kalea 15,43.309309353618076,-1.9088714950344217,1,0
+713,,Errenteria - Pontika,43.30932522059201,-1.9039389790561252,1,0
+714,,"Errenteria - Galtzaraborda Etorbidea 67 Parean, Beraungo Osasun Zentroa",43.313521109571184,-1.9114597268038143,1,0
+715,,"Errenteria - Alaberga Auzoa 53, Telefónica",43.314909960504565,-1.9079080652254186,1,0
+716,,"Errenteria - Sorgintzulo Kalea 6 Parean, Versalles Dorrea",43.317731180873025,-1.9082028388927927,1,0
+717,,Errenteria  - Sorgintzulo Kalea 11,43.31635766557292,-1.909583953096084,1,0
+719,,Errenteria - Galtzaraborda Hiribidea 53 Parean,43.31131761137337,-1.9117333464493074,1,0
+721,,"Errenteria - Galtzaraborda Etorbidea, Koldo Mitxelena",43.31095219010024,-1.9083488668225772,1,0
+722,,Errenteria - Urbia Plaza 1,43.311521053475246,-1.905687513893463,1,0
+723,,"Errenteria - Morrongilleta 24, Aralar Plaza",43.31177096648364,-1.90263725412247,1,0
+709,,Errenteria  - Sorgintzulo Kalea 11 Parean,43.31633136201835,-1.9096584154680092,1,0
+710,,"Errenteria - Sorgintzulo Kalea 6, Kristobal Gamon Ikastetxea",43.31761961361487,-1.9078348689027702,1,0
+711,,"Errenteria - Alaberga Auzoa 54 Parean, Telefónica",43.31520411418472,-1.9075945028105787,1,0
+712,,"Errenteria - Galtzaraborda Etorbidea 67, Beraungo Osasun Zentroa",43.31414239471411,-1.9105114382478516,1,0
+720,,Errenteria - Galtzaraborda Etorbidea 61,43.31168675960314,-1.9126762507027688,1,0
+97,,"Donostia - Casares Pasealekua, Darieta",43.320195879617934,-1.9260042375827557,1,0
+98,,"Donostia - Casares Pasealekua, Oleta",43.31973712346421,-1.9298971167723953,1,0
+99,,"Donostia - Altza Pasealekua 6, Santa Barbara",43.31753473010391,-1.930293405574199,1,0
+100,,"Donostia - Larratxo Pasealekua, Nerecan",43.316633872809085,-1.9341074857341216,1,0
+120,,"Donostia - Leosiñeta Kalea, Larratxo 46",43.31356097786554,-1.9377249854164422,1,0
+1305,,"Astigarraga - Donostia Ibilbidea 38, Hezegunea",43.28339451220202,-1.9492812512524453,1,0
+142,,"Donostia - Garbera Bidea, Garbera",43.30822784707357,-1.9481753819560068,1,0
+1308,,"Astigarraga - Donostia Ibilbidea, Industrialgunea",43.28029255164625,-1.950764305254365,1,0
+153,,"Donostia - Lauaizeta Kalea 28, Martillun",43.31290583123063,-1.9360223452228398,1,0
+155,,"Donostia - Txapinene Kalea 11, San Martzial",43.31409995758489,-1.9346820343942084,1,0
+1404,,Lezo - Altamira,43.31713032708974,-1.9018748682977973,1,0
+101,,"Donostia - Larratxo Pasealekua, Nerecan",43.316523193093815,-1.933825783507152,1,0
+102,,"Donostia - Altza Pasealekua 4 Parean, Santa Barbara",43.31756832000791,-1.9300338389538851,1,0
+103,,"Donostia - Casares Pasealekua, Oleta",43.31974266464615,-1.9295270387174595,1,0
+104,,"Donostia - Casares Pasealekua, Darieta",43.32036566278018,-1.9258655856856361,1,0
+1304,,"Astigarraga - Donostia Ibilbidea, Lekueder",43.280461915407855,-1.950576523242942,1,0
+1307,,Astigarraga - Donostia Ibilbidea - Pelotari Biribilgunea,43.28268722661359,-1.9497248069416213,1,0
+154,,"Donostia - Lauaizeta Kalea 33, Martillun",43.31301249122269,-1.9358725083139185,1,0
+156,,"Donostia - Txapinene Kalea 17, San Martzial",43.3141429053014,-1.9344593159973713,1,0
+110,,Donostia - Gipuzkoa Plaza,43.321047157357235,-1.981660235996646,1,0
+808,,"Oiartzun - Iparralde Etorbidea, Eliza",43.30010881672508,-1.8601527142856946,1,0
+809,,"Oiartzun - Santusene Kalea 2, Belutene",43.29669360113211,-1.8580960970161273,1,0
+810,,Oiartzun - Altzibar,43.29345309058354,-1.8573061489733185,1,0
+811,,"Oiartzun - Kaleberrria, Peñene",43.29262217645342,-1.859762491789346,1,0
+812,,"Oiartzun - Iturriotz, Herrigunea",43.293177138148685,-1.8657678471880244,1,0
+813,,"Oiartzun - Araneder Bidea 18 Parean, Ibarre",43.29626742861691,-1.8723181758693344,1,0
+814,,"Oiartzun - Ihurrita Bidea 10a, Ugaldetxo",43.29917909450711,-1.8772204262911654,1,0
+815,,Oiartzun - Mamut Merk.gunea,43.301176923158536,-1.8816960459137524,1,0
+816,,"Oiartzun - Lartzabal Etxadia 1, Arragua",43.308941392271514,-1.8819605965476909,1,0
+16,,"Donostia - Tolosa Hiribidea, Amerika Plaza",43.30235030832763,-2.003758065189647,1,0
+17,,"Donostia - Tolosa Hiribidea 77, Unibertsitateak",43.30718139051736,-2.0084386093288247,1,0
+80,,"Donostia - Tolosa Hiribidea, Lorea",43.3050203205687,-2.006365353401695,1,0
+81,,"Donostia - Zumalakarregi Hiribidea 11, Esklabak",43.31480581816229,-2.001951478199909,1,0
+140,,"Donostia - Tolosa Hiribidea 13, Magisteritza",43.31227457325447,-2.0070117023994363,1,0
+817,,"Oiartzun - Joansendo Kalea 5 Parean, Aristegi",43.299527422692805,-1.8806043789819578,1,0
+804,,"Oiartzun - Oreretako Bidea 23, Arragua",43.308790391830556,-1.8821729824850484,1,0
+805,,"Oiartzun -  Urkia Bidea 12, Talaia Industrialdea",43.304275303008936,-1.883624304316859,1,0
+806,,Oiartzun - Mamut Merk.gunea,43.3021012435317,-1.8822955578481058,1,0
+807,,Oiartzun - Ugaldetxo,43.298507474842815,-1.8757657077856675,1,0
+18,,Donostia - Tolosa Hiribidea 138,43.30223745278323,-2.004240745774249,1,0
+60,,Donostia - Zumalakarregi Hiribidea 4,43.3151005570909,-2.0016753552574245,1,0
+66,,"Donostia - Tolosa Hiribidea, Magisteritza",43.31129467300837,-2.0092718996125347,1,0
+72,,"Donostia - Tolosa Hiribidea, Zubimusu Parkea",43.312861183426456,-2.0061266271778098,1,0
+73,,Donostia - Tolosa Hiribidea 112,43.30490734718207,-2.0068357226154263,1,0
+85,,"Donostia - Tolosa Hiribidea 70, Unibertsitatea",43.307049013336595,-2.0087490148637817,1,0
+818,,"Oiartzun - Joansendo Kalea 5, Aristegi",43.299592011219744,-1.8807634658240713,1,0
+820,,Oiartzun -  Rafael Pikabea Biribilgunea,43.299213029358036,-1.8678747781421263,1,0
+821,,Oiartzun - Rafael Pikabea Etorbidea 25,43.299226954198566,-1.863830762461225,1,0
+1403,,"Lezo - Jaizkibel Etorbidea, Herrigunea",43.32154052846197,-1.897922854716404,1,0
+1010,,Pasai Donibane- Juan Xxiii (frontoia),43.32360204789567,-1.914819437945285,1,0
+1011,,"Pasai Donibane - Lezobidea 24, Meipi",43.32270474671943,-1.912307086719869,1,0
+1405,,Lezo - Kiroldegia,43.31899345355248,-1.8999174367120708,1,0
+1402,,"Lezo - Jaizkibel Etorbidea, Ijurko",43.32144598301933,-1.8974559087121814,1,0
+1406,,Lezo - Kiroldegia,43.31898124781957,-1.8995846785822534,1,0
+1013,,Pasaia - San Roke Kalea 3,43.324250612099426,-1.91484489313063,1,0
+1519,,Irun - Letxunborro Puiana Biribilgunea,43.339826061980624,-1.8113583297874414,9,0
+1501,,"Irun - Letxumborro Hiribidea 59 Parean, Aranibar",43.33003418300655,-1.8231563214529298,9,0
+1521,,Irun - Aldabe Mendia Kalea 13,43.3396303389501,-1.8107206405429996,9,0
+1506,,"Irun - Elizatxo Hiribidea 14, La Salle",43.3352946782752,-1.799086246924387,9,0
+1507,,"Irun - Gipuzkoa Hiribidea 6, Luis Mariano",43.3397592906081,-1.7946557229091729,9,0
+1508,,"Irun - Hondarribia Kalea 25, Gurutze Gorria",43.343279893452014,-1.7997801191490888,9,0
+1515,,Irun - Colon Ibilbidea 43,43.34079606544138,-1.7964857484905066,9,0
+1533,,"Irun - Elizatxo Hiribidea  36, Oinaurre",43.33272382505206,-1.8055265908545848,9,0
+1595,,Irun- Molino Errepidea (irunerantz),43.33121375634328,-1.8144373775832587,9,0
+1509,,"Irun - Zabaltza Plaza 1, Colon-zabaltza",43.3401069268763,-1.7926132761739215,9,0
+1610,,"Hondarribia - Itsasargi Kalea 20, La Muela",43.37125342148466,-1.7934890262265746,9,0
+1513,,"Irun - Colon Ibilbidea 52, Euskotren",43.34080273127272,-1.7962635521968044,9,0
+1614,,"Hondarribia - Ramon Iribarren Pasealekua 26, Lurgorri",43.38368016946583,-1.7961191094670748,9,0
+1615,,"Hondarribia - Ramon Iribarren Pasealekua 15 Parean, Iterlimen",43.38032552456134,-1.7982100649396857,9,0
+1619,,"Hondarribia - Foru Kalea 15 Parean, Arroka",43.37479024502219,-1.796727042421473,9,0
+1517,,Irun - Fermín Calbetón Kalea 3,43.339347597243226,-1.7889273365255478,9,0
+1522,,Irun - Hondarribia Kalea,43.34248954794006,-1.799117141239218,9,0
+1631,,"Hondarribia - Matxin Arzu Kalea 4, La Marina Eliza",43.36730511487077,-1.793073603741606,9,0
+1510,,Irun - Zubiaurre Kalea 5,43.34175943318189,-1.7990451739815885,9,0
+1512,,Irun - Larreaundi Biribilgunea,43.33344688980251,-1.7895133607703908,9,0
+1616,,"Hondarribia - Ramon Iribarren Pasealekua 15, Iterlimen",43.38072332097596,-1.7983626919433193,9,0
+1620,,"Hondarribia - Foru Kalea 15, Arroka",43.374665638278465,-1.796865288154086,9,0
+1536,,Irun - Euskal Herria Hiribidea 9,43.3341217665324,-1.7937310543746612,9,0
+1538,,Irun - Urdanibia Plaza,43.33762163978648,-1.7858035573550135,9,0
+1625,,"Hondarribia - Baserritar Etorbidea 64, Talaia",43.37122768319791,-1.7995993664480983,9,0
+1503,,"Irun - Gipuzkoa Hiribidea 1, Luis Mariano",43.33943558851704,-1.794699137067702,9,0
+1523,,Irun - Elizatxo Hiribidea 11,43.336292316388246,-1.7963403262207773,9,0
+139,,"Donostia - Zorroaga Anoeta, Anoeta Estadioa",43.30330535344897,-1.9732765637982028,1,0
+1618,,Hondarribia - Dorrea Biribilgunea,43.36876047285822,-1.7995986588867001,9,0
+1630,,Hondarribia - Labreder Kalea 4,43.36815788279747,-1.8005238865143283,9,0
+819,,Oiartzun - Rafael Pikabea Etorbidea 35,43.29888860789918,-1.8714930370854794,1,0
+822,,"Oiartzun - Oreretako Bidea, Mendin",43.30346202671429,-1.8741455591332898,1,0
+823,,"Oiartzun - Yon Oñatibia Etorbidea 13, Pikabene",43.3006141066089,-1.8656912373584715,1,0
+1514,,"Irun - Colon, Luis Mariano",43.34015022745183,-1.7933032782508875,9,0
+1505,,"Irun - Elizatxo Hiribidea 62, Bentak",43.33087364340125,-1.8155047968864673,9,0
+135,,"Donostia - Miramon Pasealekua, Poliklinika I",43.29058905940724,-1.9801100109030667,1,0
+136,,"Donostia - Mikeletegi, Miramon",43.28808550867007,-1.98209940102392,1,0
+122,,Donostia - Mikeletegi Pasealekua 12,43.288067502246335,-1.982099701313472,1,0
+147,,Donostia - Mikeletegi Pasealekua 6,43.28697946611503,-1.985310301209348,1,0

@@ -1,0 +1,78 @@
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: ecomove-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build: ./web
+    container_name: ecomove-web
+    ports:
+      - "8083:8083"
+    environment:
+      DATA_DIR: /app/data
+      SERVER_PORT: 8083
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: guest
+      RABBITMQ_PASS: guest
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  sycd:
+    build: ./sycd
+    container_name: ecomove-sycd
+    environment:
+      DATA_DIR: /app/data
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: guest
+      RABBITMQ_PASS: guest
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  matomo-db:
+    image: mariadb:11
+    container_name: ecomove-matomo-db
+    command: --max-allowed-packet=64MB
+    environment:
+      MYSQL_ROOT_PASSWORD: matomo_root
+      MYSQL_DATABASE: matomo
+      MYSQL_USER: matomo
+      MYSQL_PASSWORD: matomo
+    volumes:
+      - matomo_db:/var/lib/mysql
+
+  matomo:
+    image: matomo:5-apache
+    container_name: ecomove-matomo
+    ports:
+      - "8081:80"
+    environment:
+      MATOMO_DATABASE_HOST: matomo-db
+      MATOMO_DATABASE_ADAPTER: mysql
+      MATOMO_DATABASE_TABLES_PREFIX: matomo_
+      MATOMO_DATABASE_USERNAME: matomo
+      MATOMO_DATABASE_PASSWORD: matomo
+      MATOMO_DATABASE_DBNAME: matomo
+    volumes:
+      - matomo_app:/var/www/html
+    depends_on:
+      - matomo-db
+
+volumes:
+  matomo_db:
+  matomo_app:
