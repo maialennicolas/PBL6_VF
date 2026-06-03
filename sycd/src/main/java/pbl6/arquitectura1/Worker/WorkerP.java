@@ -58,11 +58,18 @@ public class WorkerP {
     public synchronized void parar() { notify(); }
 
     static String clasificar(double velocidad, double metros) {
-        if (velocidad >= 30.0) return null;
-        if (velocidad < 6.0)  return "OINEZ";
-        if (velocidad < 15.0) return "KORRIKA";
-        return metros < 5.0 ? "TXIRRINA" : "PATINETE";
+    // Si parece coche urbano, no lo marcamos como patinete.
+    // Dejamos que lo clasifique WorkerC.
+    if (velocidad >= 18.0 && metros >= 1000.0) {
+        return null;
     }
+
+    if (velocidad >= 30.0) return null;
+    if (velocidad < 6.0)  return "OINEZ";
+    if (velocidad < 15.0) return "KORRIKA";
+
+    return metros < 5.0 ? "TXIRRINA" : "PATINETE";
+}
 
     public class MiConsumer extends DefaultConsumer {
         public MiConsumer(Channel channel) { super(channel); }

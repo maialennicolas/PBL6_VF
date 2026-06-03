@@ -16,8 +16,10 @@ import pbl6.arquitectura1.Publisher.KafkaStreamConfig;
 
 public class WorkerC {
 
-    static final double UMBRAL_VEL  = 30.0;
-    static final double UMBRAL_DIST = 5.0;
+static final double UMBRAL_VEL_COCHE_ALTA = 30.0;
+static final double UMBRAL_VEL_COCHE_URBANO = 18.0;
+static final double UMBRAL_DIST_MINIMA = 5.0;
+static final double UMBRAL_DIST_COCHE_URBANO = 1000.0;
     
     ExecutorService pool;
     ConnectionFactory factory;
@@ -94,7 +96,11 @@ public class WorkerC {
         String timestamp = p[7];
         String sessionId = p.length >= 9 ? p[8] : "";
 
-        boolean esKotxea = velocidad > UMBRAL_VEL && metros > UMBRAL_DIST;
+        boolean esKotxea = metros > UMBRAL_DIST_MINIMA &&
+        (
+                velocidad >= UMBRAL_VEL_COCHE_ALTA ||
+                (velocidad >= UMBRAL_VEL_COCHE_URBANO && metros >= UMBRAL_DIST_COCHE_URBANO)
+        );
 
         if (esKotxea) {
             String resultado = userId + " " + empresaId + " KOTXEA " + lat + " " + lon + " " + timestamp + " " + sessionId;
