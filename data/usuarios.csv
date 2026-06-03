@@ -9,3 +9,4 @@ userID,empresaID,nombre,apellidos,nombreUsuario,contrasena,email,tieneCoche,mode
 8,101,Iñaki,Garitano,igaritano,12345,igaritano@mondragon.edu,true,CITROEN_C3_D,Oñati
 9,101,prueba,Mendizabal,prueba,123456,prueba@ecomove.eus,true,DACIA_SANDERO_G,Bilbo
 10,101,Nerea,Mendizabal,prueba3,123456,prueba3@ecomove.eus,true,LAND_ROVER_DISCOVERY_SPORT_D,Bilbo
+11,101,mai,nico,mai,12345,mai@ecomove.eus,true,TESLA_MODEL_X,Oñati
