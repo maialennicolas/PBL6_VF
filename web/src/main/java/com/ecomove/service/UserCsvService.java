@@ -2,73 +2,66 @@ package com.ecomove.service;
 
 import com.ecomove.model.CarModel;
 import com.ecomove.model.Empresa;
+import com.ecomove.model.ProfileUpdateRequest;
 import com.ecomove.model.User;
+import com.ecomove.model.Usuario;
+import com.ecomove.repository.UsuarioRepository;
 import org.springframework.stereotype.Service;
 
-import com.ecomove.model.ProfileUpdateRequest;
-import java.util.ArrayList;
-
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 @Service
 public class UserCsvService {
 
-    public static final String USERS_FILE = "usuarios.csv";
+    // Mantenemos las rutas de empresas y coches porque siguen en CSV
     public static final String COMPANIES_FILE = "empresas.csv";
     public static final String CARS_FILE = "coches.csv";
 
-    private static final List<String> USER_HEADERS = List.of(
-            "userID", "empresaID", "nombre", "apellidos", "nombreUsuario", "contrasena",
-            "email", "tieneCoche", "modeloCocheID", "puebloCiudad");
-
+    private final UsuarioRepository usuarioRepository;
     private final CsvDataService csv;
 
-    public UserCsvService(CsvDataService csv) {
+    // Spring inyectará automáticamente el repositorio y el servicio CSV restante
+    public UserCsvService(UsuarioRepository usuarioRepository, CsvDataService csv) {
+        this.usuarioRepository = usuarioRepository;
         this.csv = csv;
     }
 
-    public List<User> getAllUsers() {
-        return csv.readRows(USERS_FILE).stream().map(this::toUser).toList();
+    // ANTES: Leía todo el fichero de texto. AHORA: Va directo a la tabla de MySQL
+    public List<Usuario> getAllUsers() {
+        return usuarioRepository.findAll();
     }
 
-    public Optional<User> findById(long userId) {
-        return getAllUsers().stream().filter(user -> user.userID() == userId).findFirst();
+    public Optional<Usuario> findById(long userId) {
+        return usuarioRepository.findById(userId);
     }
 
-    public Optional<User> findByNombreUsuario(String nombreUsuario) {
-        return getAllUsers().stream()
-                .filter(user -> user.nombreUsuario()
-                        .equalsIgnoreCase(nombreUsuario == null ? "" : nombreUsuario.trim()))
-                .findFirst();
+    public Optional<Usuario> findByNombreUsuario(String nombreUsuario) {
+        if (nombreUsuario == null)
+            return Optional.empty();
+        return usuarioRepository.findByNombreUsuario(nombreUsuario.trim());
     }
 
-    public Optional<User> findByEmail(String email) {
-        return getAllUsers().stream()
-                .filter(user -> user.email().equalsIgnoreCase(email == null ? "" : email.trim()))
-                .findFirst();
+    public Optional<Usuario> findByEmail(String email) {
+        if (email == null)
+            return Optional.empty();
+        return usuarioRepository.findByEmail(email.trim());
     }
 
-    public User saveUser(User user) {
-        csv.appendRow(USERS_FILE, USER_HEADERS, List.of(
-                String.valueOf(user.userID()),
-                String.valueOf(user.empresaID()),
-                user.nombre(),
-                user.apellidos(),
-                user.nombreUsuario(),
-                user.contrasena(),
-                user.email(),
-                String.valueOf(user.tieneCoche()),
-                user.modeloCocheID(),
-                user.puebloCiudad()));
-        return user;
+    // ANTES: Hacía un append en el archivo plano. AHORA: Hace un INSERT/UPDATE en
+    // MySQL
+    public Usuario saveUser(Usuario user) {
+        return usuarioRepository.save(user);
     }
 
+    // Ya no necesitas auto-calcular el ID de forma manual leyendo filas; MySQL lo
+    // hará solo con el AutoIncrement
     public long nextUserId() {
-        return csv.nextId(USERS_FILE, "userID");
+        return 0; // Puedes dejarlo retornar 0, el ID real lo asignará la base de datos al guardar
     }
 
+    // Estos métodos se quedan exactamente igual porque se alimentan de catálogos
+    // fijos en CSV
     public List<Empresa> getCompanies() {
         return csv.readRows(COMPANIES_FILE).stream().map(row -> new Empresa(
                 parseLong(row.get("empresaID")),
@@ -90,63 +83,16 @@ public class UserCsvService {
                 parseDouble(row.get("emisionesKgKm")))).toList();
     }
 
-    public Optional<CarModel> findCarModel(String modeloCocheID) {
-        return getCarModels().stream()
-                .filter(car -> car.modeloCocheID().equalsIgnoreCase(modeloCocheID == null ? "" : modeloCocheID))
-                .findFirst();
-    }
+    // Añade esto a tu UserCsvService.java
+    public Usuario updateProfile(ProfileUpdateRequest request) {
+        Usuario user = usuarioRepository.findById(request.userId())
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
 
-    public User updateProfile(ProfileUpdateRequest request) {
-    List<Map<String, String>> rows = new ArrayList<>(csv.readRows(USERS_FILE));
+        user.setNombre(request.nombre());
+        user.setApellidos(request.apellidos());
+        user.setPuebloCiudad(request.puebloCiudad());
 
-    for (Map<String, String> row : rows) {
-        if (parseLong(row.get("userID")) == request.userId()) {
-
-            if (request.empresaID() != null) {
-                row.put("empresaID", String.valueOf(request.empresaID()));
-            }
-
-            row.put("nombre", safe(request.nombre(), row.getOrDefault("nombre", "")));
-            row.put("apellidos", safe(request.apellidos(), row.getOrDefault("apellidos", "")));
-            row.put("email", safe(request.email(), row.getOrDefault("email", "")));
-            row.put("puebloCiudad", safe(request.puebloCiudad(), row.getOrDefault("puebloCiudad", "")));
-
-            boolean tieneCoche = request.tieneCoche() != null
-                    ? request.tieneCoche()
-                    : Boolean.parseBoolean(row.getOrDefault("tieneCoche", "false"));
-
-            row.put("tieneCoche", String.valueOf(tieneCoche));
-
-            row.put("modeloCocheID", tieneCoche
-                    ? safe(request.modeloCocheID(), row.getOrDefault("modeloCocheID", "SIN_COCHE"))
-                    : "SIN_COCHE"
-            );
-
-            csv.writeRows(USERS_FILE, USER_HEADERS, rows);
-
-            return toUser(row);
-        }
-    }
-
-    throw new IllegalArgumentException("Usuario no encontrado");
-}
-
-    private String safe(String value, String fallback) {
-        return value == null || value.isBlank() ? fallback : value.trim();
-    }
-
-    private User toUser(Map<String, String> row) {
-        return new User(
-                parseLong(row.get("userID")),
-                parseLong(row.get("empresaID")),
-                row.getOrDefault("nombre", ""),
-                row.getOrDefault("apellidos", ""),
-                row.getOrDefault("nombreUsuario", ""),
-                row.getOrDefault("contrasena", ""),
-                row.getOrDefault("email", ""),
-                Boolean.parseBoolean(row.getOrDefault("tieneCoche", "false")),
-                row.getOrDefault("modeloCocheID", "SIN_COCHE"),
-                row.getOrDefault("puebloCiudad", ""));
+        return usuarioRepository.save(user);
     }
 
     private long parseLong(String value) {
