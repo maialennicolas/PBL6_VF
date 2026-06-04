@@ -7,7 +7,7 @@ services:
       - "15672:15672"
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
-      interval: 5s
+      interval: 10s
       timeout: 5s
       retries: 10
 
@@ -23,16 +23,20 @@ services:
       RABBITMQ_PORT: 5672
       RABBITMQ_USER: guest
       RABBITMQ_PASS: guest
-      SPRING_DATASOURCE_URL: jdbc:mysql://matomo-db:3306/ecomove_db
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: root
+      # Conexión a la base de datos de Matomo
+      SPRING_DATASOURCE_URL: jdbc:mysql://matomo-db:3306/matomo?allowPublicKeyRetrieval=true&useSSL=false
+      SPRING_DATASOURCE_USERNAME: matomo
+      SPRING_DATASOURCE_PASSWORD: matomo
+      # Corrección de dialecto para compatibilidad con MariaDB 11
+      SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: org.hibernate.dialect.MariaDBDialect
+      SPRING_JPA_HIBERNATE_DDL_AUTO: none
     volumes:
       - ./data:/app/data
     depends_on:
       rabbitmq:
         condition: service_healthy
       matomo-db:
-        condition: service_healthy
+        condition: service_started
 
   sycd:
     build: ./sycd
@@ -54,19 +58,12 @@ services:
     container_name: ecomove-matomo-db
     command: --max-allowed-packet=64MB
     environment:
-      MYSQL_ROOT_PASSWORD: root
-    ports:
-      - "3306:3306"
+      MYSQL_ROOT_PASSWORD: matomo_root
+      MYSQL_DATABASE: matomo
+      MYSQL_USER: matomo
+      MYSQL_PASSWORD: matomo
     volumes:
       - matomo_db:/var/lib/mysql
-      # 🛠️ TRUCO MAESTRO: Metemos tu script SQL en esta carpeta especial de Docker. 
-      # Al arrancar por primera vez, el contenedor ejecutará tu SQL solo y creará 'ecomove_db' y 'matomo_db' de golpe.
-      - ./ecomove_db.sql:/docker-entrypoint-initdb.d/ecomove_db.sql
-    healthcheck:
-      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
 
   matomo:
     image: matomo:5-apache
@@ -76,13 +73,26 @@ services:
     environment:
       MATOMO_DATABASE_HOST: matomo-db
       MATOMO_DATABASE_ADAPTER: mysql
-      MATOMO_DATABASE_USERNAME: root
-      MATOMO_DATABASE_PASSWORD: root
-      MATOMO_DATABASE_DBNAME: matomo_db  # 👈 Corregido con guion bajo como tu archivo .sql
       MATOMO_DATABASE_TABLES_PREFIX: matomo_
+      MATOMO_DATABASE_USERNAME: matomo
+      MATOMO_DATABASE_PASSWORD: matomo
+      MATOMO_DATABASE_DBNAME: matomo
+    volumes:
+      - matomo_app:/var/www/html
     depends_on:
-      matomo-db:
-        condition: service_healthy
+      - matomo-db
+
+  grafana:
+    image: grafana/grafana-oss:latest
+    container_name: ecomove-grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - matomo-db
 
 volumes:
   matomo_db:
+  matomo_app:
+  grafana_data:
