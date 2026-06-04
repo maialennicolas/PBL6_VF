@@ -12,5 +12,5 @@ ENV RABBITMQ_HOST=rabbitmq
 ENV RABBITMQ_PORT=5672
 COPY --from=build /app/target /app/target
 COPY docker-entrypoint.sh /app/docker-entrypoint.sh
-RUN chmod +x /app/docker-entrypoint.sh
+RUN sed -i 's/\r$//' /app/docker-entrypoint.sh && chmod +x /app/docker-entrypoint.sh
 ENTRYPOINT ["/app/docker-entrypoint.sh"]

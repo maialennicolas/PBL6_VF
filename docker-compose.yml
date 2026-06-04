@@ -11,6 +11,23 @@ services:
       timeout: 5s
       retries: 10
 
+  ecomove-db:
+    image: mariadb:11
+    container_name: ecomove-db
+    command: --max-allowed-packet=64MB
+    environment:
+      MYSQL_ROOT_PASSWORD: ecomove_root
+      MYSQL_DATABASE: ecomove_db
+      MYSQL_USER: ecomove
+      MYSQL_PASSWORD: ecomove
+    volumes:
+      - ecomove_db:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
   web:
     build: ./web
     container_name: ecomove-web
@@ -23,20 +40,18 @@ services:
       RABBITMQ_PORT: 5672
       RABBITMQ_USER: guest
       RABBITMQ_PASS: guest
-      # Conexión a la base de datos de Matomo
-      SPRING_DATASOURCE_URL: jdbc:mysql://matomo-db:3306/matomo?allowPublicKeyRetrieval=true&useSSL=false
-      SPRING_DATASOURCE_USERNAME: matomo
-      SPRING_DATASOURCE_PASSWORD: matomo
-      # Corrección de dialecto para compatibilidad con MariaDB 11
+      SPRING_DATASOURCE_URL: jdbc:mysql://ecomove-db:3306/ecomove_db?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: ecomove
+      SPRING_DATASOURCE_PASSWORD: ecomove
       SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: org.hibernate.dialect.MariaDBDialect
-      SPRING_JPA_HIBERNATE_DDL_AUTO: none
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
     volumes:
       - ./data:/app/data
     depends_on:
       rabbitmq:
         condition: service_healthy
-      matomo-db:
-        condition: service_started
+      ecomove-db:
+        condition: service_healthy
 
   sycd:
     build: ./sycd
@@ -47,10 +62,15 @@ services:
       RABBITMQ_PORT: 5672
       RABBITMQ_USER: guest
       RABBITMQ_PASS: guest
+      DB_URL: jdbc:mariadb://ecomove-db:3306/ecomove_db?useUnicode=true&characterEncoding=utf8
+      DB_USER: ecomove
+      DB_PASSWORD: ecomove
     volumes:
       - ./data:/app/data
     depends_on:
       rabbitmq:
+        condition: service_healthy
+      ecomove-db:
         condition: service_healthy
 
   matomo-db:
@@ -90,9 +110,10 @@ services:
     volumes:
       - grafana_data:/var/lib/grafana
     depends_on:
-      - matomo-db
+      - ecomove-db
 
 volumes:
+  ecomove_db:
   matomo_db:
   matomo_app:
   grafana_data:

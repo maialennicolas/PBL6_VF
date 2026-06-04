@@ -9,7 +9,7 @@ public class Usuario {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "userid")
-    private long userID;
+    private Long userID;
     
     @Column(name = "empresaid")
     private long empresaID;
@@ -45,7 +45,7 @@ public class Usuario {
     // Constructor lleno para cuando necesites crear un Usuario con todos los datos
     public Usuario(long userID, long empresaID, String nombre, String apellidos, String nombreUsuario, 
                    String contrasena, String email, boolean tieneCoche, String modeloCocheID, String puebloCiudad) {
-        this.userID = userID;
+        this.userID = userID <= 0 ? null : userID;
         this.empresaID = empresaID;
         this.nombre = nombre;
         this.apellidos = apellidos;
@@ -62,11 +62,11 @@ public class Usuario {
     // =========================================================================
 
     public long getUserID() {
-        return userID;
+        return userID == null ? 0L : userID;
     }
 
     public void setUserID(long userID) {
-        this.userID = userID;
+        this.userID = userID <= 0 ? null : userID;
     }
 
     public long getEmpresaID() {

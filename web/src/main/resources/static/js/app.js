@@ -22,6 +22,8 @@ const state = {
     trackingLocationCount: 0,
     activeRewardCategory: 'Guztiak',
     carpoolTab: 'bilatu',
+    activeCarpool: JSON.parse(localStorage.getItem('ecomoveActiveCarpool') || 'null'),
+    lastCreatedCarpoolOffer: JSON.parse(localStorage.getItem('ecomoveDriverCarpoolOffer') || 'null'),
     transportSearchResult: null,
     transportFilteredStops: null,
     transportFilteredLines: null
@@ -175,6 +177,7 @@ async function loadCatalogs() {
 function clearLoadedData() {
     state.dashboard = null;
     state.riders = [];
+    state.myCarpools = null;
     state.corporate = null;
 }
 
@@ -184,6 +187,7 @@ async function ensureData() {
     const tasks = [];
     if (!state.dashboard) tasks.push(api(`/api/dashboard?userId=${userId}`).then(data => state.dashboard = data));
     if (!state.riders.length) tasks.push(api(`/api/riders?userId=${userId}`).then(data => state.riders = data));
+    if (state.myCarpools === null) tasks.push(api(`/api/carpool/my?userId=${userId}`).then(data => state.myCarpools = data));
     if (!state.lines.length) tasks.push(api('/api/transport-lines').then(data => state.lines = data));
     if (!state.transportStops.length) {
         tasks.push(Promise.all([
@@ -198,6 +202,18 @@ async function ensureData() {
     if (!state.carModels.length) tasks.push(api('/api/catalog/car-models').then(data => state.carModels = data));
     await Promise.all(tasks);
     state.user = state.dashboard.user;
+
+    if (state.activeCarpool) {
+        const validDriverCarpool = (state.myCarpools || []).some(item =>
+            Number(item.offerId) === Number(state.activeCarpool.carpoolId) &&
+            String(item.role || '').toUpperCase() === 'DRIVER'
+        );
+        if (!validDriverCarpool) {
+            state.activeCarpool = null;
+            localStorage.removeItem('ecomoveActiveCarpool');
+        }
+    }
+
     localStorage.setItem('ecomoveUser', JSON.stringify(state.user));
 }
 
@@ -388,6 +404,10 @@ async function login(event) {
 
         state.user = response.user;
         localStorage.setItem('ecomoveUser', JSON.stringify(state.user));
+        state.activeCarpool = null;
+        state.lastCreatedCarpoolOffer = null;
+        localStorage.removeItem('ecomoveActiveCarpool');
+        localStorage.removeItem('ecomoveDriverCarpoolOffer');
         clearLoadedData();
 
         matomoEvent('Auth', 'login', data.nombreUsuario);
@@ -431,6 +451,10 @@ async function register(event) {
 
         state.user = response.user;
         localStorage.setItem('ecomoveUser', JSON.stringify(state.user));
+        state.activeCarpool = null;
+        state.lastCreatedCarpoolOffer = null;
+        localStorage.removeItem('ecomoveActiveCarpool');
+        localStorage.removeItem('ecomoveDriverCarpoolOffer');
         clearLoadedData();
 
         matomoEvent('Auth', 'register', data.nombreUsuario);
@@ -512,66 +536,84 @@ function renderKpis(stats) {
 }
 
 function renderTrips(trips) {
+    if (!trips || !trips.length) {
+        return `
+            <div class="card trips-card">
+                <div class="page-title">
+                    <div>
+                        <h2>Azken bidaiak</h2>
+                        <p>Zure mugimendu jasangarriak · 👤 normala / 👥 karpoola</p>
+                    </div>
+                </div>
+                <p style="color:#6b7280;font-weight:800;margin:0">Oraindik ez dago bidaiarik.</p>
+            </div>
+        `;
+    }
+
     return `
-        <div class="card">
+        <div class="card trips-card">
             <div class="page-title">
                 <div>
                     <h2>Azken bidaiak</h2>
-                    <p>Zure mugimendu jasangarriak</p>
+                    <p>Zure mugimendu jasangarriak · 👤 normala / 👥 karpoola</p>
                 </div>
             </div>
 
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Modua / Denbora</th>
-                        <th>Ibilbidea</th>
-                        <th>Km</th>
-                        <th>CO₂</th>
-                        <th>Data</th>
-                        <th>Egoera</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${trips.map(t => {
+            <div class="trips-list" role="list" aria-label="Azken bidaiak">
+                ${trips.map(t => {
         const isPending = t.status !== 'CALCULADO' || t.mode === 'SIN_CALCULAR';
+        const tripTypeIcon = t.tripTypeIcon || (t.carpool ? '👥' : '👤');
+        const tripTypeLabel = t.carpool ? 'Karpoola' : 'Bidaia normala';
+        const passengers = Number(t.passengers || 1);
+        const role = t.carpoolRole || 'NONE';
+        const roleText = t.carpool ? `${role} · ${passengers} pertsona` : 'bidaia normala';
+        const statusLabel = isPending ? 'Kalkulatzen' : (t.points || '+0 pts');
+        const statusClass = isPending ? 'warning' : '';
 
         return `
-                            <tr>
-                                <td>
-                                    <strong>${t.icon || '🧭'} ${escapeHtml(t.mode || 'SIN_CALCULAR')}</strong><br>
-                                    <small style="color:#6b7280;font-weight:800">
-                                        ⏱ ${escapeHtml(t.duration || '00:00:00')}
-                                    </small>
-                                </td>
+                    <article class="trip-item ${t.carpool ? 'is-carpool' : 'is-normal'}" role="listitem">
+                        <div class="trip-cell trip-main">
+                            <div class="trip-title">
+                                <span class="trip-type-icon" aria-label="${escapeHtml(tripTypeLabel)}" title="${escapeHtml(tripTypeLabel)}">${tripTypeIcon}</span>
+                                <span aria-hidden="true">${t.icon || '🧭'}</span>
+                                <strong>${escapeHtml(t.mode || 'SIN_CALCULAR')}</strong>
+                            </div>
+                            <small class="trip-muted">⏱ ${escapeHtml(t.duration || '00:00:00')} · ${escapeHtml(roleText)}</small>
+                        </div>
 
-                                <td>
-                                    <strong>${escapeHtml(t.from || 'Origen pendiente')}</strong>
-                                    →
-                                    <strong>${escapeHtml(t.to || 'Destino pendiente')}</strong>
-                                    <br>
-                                </td>
+                        <div class="trip-cell trip-route-cell">
+                            <div class="trip-route-line">
+                                <strong>${escapeHtml(t.from || 'Origen pendiente')}</strong>
+                                <span aria-hidden="true">→</span>
+                                <strong>${escapeHtml(t.to || 'Destino pendiente')}</strong>
+                            </div>
+                            <small class="trip-meta ${t.carpool ? 'color-green' : ''}">
+                                ${t.carpool ? `👥 Karpoola #${escapeHtml(t.carpoolId || '-')}` : '👤 Bidaia normala'}
+                            </small>
+                        </div>
 
-                                <td>${escapeHtml(t.km || '0.0 km')}</td>
+                        <div class="trip-cell trip-km">
+                            <small class="trip-label">KM</small>
+                            <strong>${escapeHtml(t.km || '0.0 km')}</strong>
+                        </div>
 
-                                <td>
-                                    <span class="badge">
-                                        ${escapeHtml(t.co2 || '0.0 kg')}
-                                    </span>
-                                </td>
+                        <div class="trip-cell trip-co2">
+                            <span class="co2-pill">Aurreztua <strong>${escapeHtml(t.co2Saved || t.co2 || '0.0 kg')}</strong></span>
+                            <small class="trip-muted">Emititua: ${escapeHtml(t.co2Consumed || '0.0 kg')}</small>
+                        </div>
 
-                                <td>${escapeHtml(t.date || '')}</td>
+                        <div class="trip-cell trip-date">
+                            <small class="trip-label">Data</small>
+                            <strong>${escapeHtml(t.date || '')}</strong>
+                        </div>
 
-                                <td>
-                                    <span class="badge ${isPending ? 'warning' : ''}">
-                                        ${isPending ? escapeHtml(t.status || 'Kalkulatzen') : escapeHtml(t.points || '+0 pts')}
-                                    </span>
-                                </td>
-                            </tr>
-                        `;
+                        <div class="trip-cell trip-status">
+                            <span class="badge ${statusClass}">${escapeHtml(statusLabel)}</span>
+                        </div>
+                    </article>
+                `;
     }).join('')}
-                </tbody>
-            </table>
+            </div>
         </div>
     `;
 }
@@ -671,7 +713,7 @@ function renderHome() {
                 <button class="btn secondary" style="width:100%;margin-top:10px" onclick="go('#/app/karpoola')">🚗 Karpoola bilatu</button>
             </article>
         </section>
-        <section class="grid-2">
+        <section class="home-stack">
             ${renderTrips(d.recentTrips)}
             <article class="card">
                 <div class="page-title"><div><h2>CO₂ eboluzioa</h2><p>Azken 6 hilabeteak</p></div></div>
@@ -693,7 +735,7 @@ function renderTracking() {
 
     const elapsedText = formatLiveDuration(elapsedSeconds);
 
-    const mainButtonText = isActive ? '■ Gelditu bidaia' : '▶ Hasi bidaia';
+    const mainButtonText = isActive ? '■ Gelditu bidaia' : (state.activeCarpool ? '▶ Hasi karpool bidaia' : '▶ Hasi bidaia');
     const mainButtonClass = isActive ? 'btn danger' : 'btn';
     const mainButtonAction = isActive ? 'stopTracking()' : 'startTracking()';
 
@@ -756,6 +798,14 @@ function renderTracking() {
                     </div>
                 </div>
 
+                ${state.activeCarpool ? `
+                <div class="card soft" style="margin-top:18px;border-color:#86efac">
+                    <small class="label">Karpool aktiboa</small>
+                    <strong style="font-size:14px">👥 Karpoola #${escapeHtml(state.activeCarpool.carpoolId)} · ${escapeHtml(state.activeCarpool.role || 'DRIVER')}</strong><br>
+                    <small style="color:#6b7280;font-weight:800">Gidariak tracking-a amaitzean, bidaiari guztiei gordeko zaie.</small>
+                </div>
+                ` : ''}
+
                 <div class="card soft" style="margin-top:18px">
                     <small class="label">Session ID</small>
                     <strong style="font-size:13px;word-break:break-all">
@@ -781,7 +831,7 @@ function renderTracking() {
 
                 <p style="font-weight:700;color:#166534">
                     ${isActive
-            ? 'Kokapena minuturo gordetzen ari da.'
+            ? 'Kokapena 20 segundoro gordetzen ari da.'
             : 'Sakatu “Hasi bidaia” eta baimendu kokapena.'}
                 </p>
 
@@ -1008,13 +1058,22 @@ async function stopTracking() {
     const userId = currentUserId();
     const sessionId = state.trackingSessionId;
 
+    const carpool = state.activeCarpool;
     state.tracking = await api(
         `/api/tracking/stop?userId=${userId}` +
         `&sessionId=${encodeURIComponent(sessionId)}` +
         `&durationSeconds=${finalElapsedSeconds}` +
-        `&endTimestamp=${encodeURIComponent(endTimestamp)}`,
+        `&endTimestamp=${encodeURIComponent(endTimestamp)}` +
+        `&carpoolId=${encodeURIComponent(carpool?.carpoolId || 0)}` +
+        `&rolCarpool=${encodeURIComponent(carpool?.role || 'NONE')}`,
         { method: 'POST' }
     );
+
+    if (carpool) {
+        state.activeCarpool = null;
+        state.myCarpools = null;
+        localStorage.removeItem('ecomoveActiveCarpool');
+    }
 
     state.trackingStartedAt = null;
     state.trackingSessionId = null;
@@ -1086,23 +1145,25 @@ function renderCarpool() {
                 <button class="${isSearch ? 'active' : ''}" onclick="setCarpoolTab('bilatu')">🔍 Bidaiak bilatu</button>
                 <button class="${!isSearch ? 'active' : ''}" onclick="setCarpoolTab('eskaini')">🚗 Nire bidaia eskaini</button>
             </div>
-            ${isSearch ? '<input style="max-width:320px" id="riderSearch" placeholder="Bilatu helmuga, gidaria edo ordua..." oninput="filterRiders()">' : ''}
+            ${isSearch ? '<input style="max-width:360px" id="riderSearch" placeholder="Bilatu abiapuntua, helmuga, gidaria edo ordua..." oninput="filterRiders()">' : ''}
         </div>
         <section id="carpoolContent">
-            ${isSearch ? renderRiderCards(cityRiders) : renderOfferTrip()}
+            ${isSearch ? renderRiderCards(cityRiders, false) : renderOfferTrip()}
         </section>
     `;
 
     shell('carpool', content);
 }
 
-function renderRiderCards(riders) {
+function renderRiderCards(riders, searchActive = false) {
     if (!riders.length) {
         return `
             <article class="card bg-green" style="border-color:#bbf7d0">
-                <h2 style="margin-top:0">Ez dago bidaiarik zure herritik</h2>
+                <h2 style="margin-top:0">Ez dago bat datorren karpool bidaiarik</h2>
                 <p style="font-weight:800;color:#166534">
-                    Momentuz ez dago ${escapeHtml(state.user?.puebloCiudad || '')} ingurutik ateratzen den bidaiarik.
+                    ${searchActive
+                        ? 'Ez dago bilaketarekin bat datorren abiapuntu edo helmugarik.'
+                        : `Momentuz ez dago ${escapeHtml(state.user?.puebloCiudad || '')} ingurutik ateratzen den bidaiarik.`}
                 </p>
                 <button class="btn" onclick="setCarpoolTab('eskaini')">Nire bidaia eskaini</button>
             </article>
@@ -1110,7 +1171,7 @@ function renderRiderCards(riders) {
     }
 
     return `
-        <p class="label" style="margin-bottom:14px">${riders.length} bidaia gertu</p>
+        <p class="label" style="margin-bottom:14px">${riders.length} bidaia ${searchActive ? 'aurkituta' : 'gertu'}</p>
         <div class="grid-3">
             ${riders.map(r => `
                 <article class="card">
@@ -1132,9 +1193,12 @@ function renderRiderCards(riders) {
                         </small>
                     </div>
 
-                    <button class="btn" style="width:100%" onclick="joinRide('${escapeHtml(r.name)}')">
+                    <button class="btn" style="width:100%" onclick="joinRide(${Number(r.id)}, '${escapeHtml(r.name)}')">
                         Bidaiara batu
                     </button>
+                    <small style="display:block;margin-top:8px;color:#6b7280;font-weight:800">
+                        Bidaiaria bazara, ez duzu GPSa hasi behar. Gidariak amaitzean gordeko da.
+                    </small>
                 </article>
             `).join('')}
         </div>
@@ -1162,7 +1226,7 @@ function renderOfferTrip() {
                 <h2 style="margin-top:0">Nire ibilbidea eskaini</h2>
                 <p class="label">Auto eredua: ${escapeHtml(u.modeloCocheID)}</p>
                 <div class="form-group"><label>Abiapuntua</label><input name="from" value="${escapeHtml(u.puebloCiudad || 'Bilbo')}"></div>
-                <div class="form-group"><label>Helburua</label><input name="to" value="Getxo"></div>
+                <div class="form-group"><label>Helmuga</label><input name="to" value="Getxo"></div>
                 <div class="grid-2">
                     <div class="form-group"><label>Ordua</label><input name="time" type="time" value="08:30"></div>
                     <div class="form-group"><label>Leku libre</label><select name="seats"><option value="1">1 leku</option><option value="2">2 leku</option><option value="3">3 leku</option></select></div>
@@ -1170,16 +1234,56 @@ function renderOfferTrip() {
                 <button class="btn" style="width:100%">Argitaratu bidaia</button>
             </form>
             <article class="card bg-green" style="border-color:#bbf7d0">
-                <h2 style="margin-top:0">Karpoola abantailak</h2>
-                <p style="font-weight:800;color:#166534">Argitaratutako bidaia <strong>data/carpool_ofertas.csv</strong> fitxategian gordeko da.</p>
+                <h2 style="margin-top:0">Nire karpool bidaiak</h2>
+                <p style="font-weight:800;color:#166534">Hemen agertzen dira gidari edo bidaiari gisa pendiente dituzun karpool bidaiak.</p>
+                ${renderMyCarpoolsPanel()}
+                <hr style="border:none;border-top:1px solid #bbf7d0;margin:18px 0">
                 <ul style="font-weight:800;color:#166534;line-height:2">
-                    <li>Gastuaren %50 aurreztea</li>
-                    <li>CO₂ isuria erdira murriztea</li>
-                    <li>Langileen arteko harremanak sendotzea</li>
-                    <li>EcoMove puntuak lortzea</li>
+                    <li>Gidariak bakarrik has dezake GPS bidaia.</li>
+                    <li>Bidaiariei automatikoki gordeko zaie gidariak amaitzean.</li>
+                    <li>CO₂ isuria pertsona kopuruaren arabera banatzen da.</li>
                 </ul>
             </article>
         </section>
+    `;
+}
+
+function renderMyCarpoolsPanel() {
+    const items = state.myCarpools || [];
+
+    if (!items.length) {
+        return `
+            <div class="card soft" style="margin:14px 0;border-color:#86efac">
+                <strong>Ez duzu karpool pendienterik</strong><br>
+                <small style="color:#166534;font-weight:900">Sortu bidaia bat edo batu beste gidari baten karpoolera.</small>
+            </div>
+        `;
+    }
+
+    return `
+        <div style="display:grid;gap:12px;margin-top:14px">
+            ${items.map(item => {
+                const isDriver = String(item.role || '').toUpperCase() === 'DRIVER';
+                return `
+                    <div class="card soft" style="border-color:#86efac">
+                        <small class="label">${isDriver ? 'GIDARIA' : 'BIDAIARIA'} · Karpoola #${escapeHtml(item.offerId)}</small>
+                        <strong>👥 ${escapeHtml(item.from)} → ${escapeHtml(item.to)}</strong><br>
+                        <small style="color:#166534;font-weight:900">
+                            🕘 ${escapeHtml(item.time)} · ${Number(item.passengers || 1)} pertsona · gidaria: ${escapeHtml(item.driverName || '-')}
+                        </small>
+                        ${isDriver ? `
+                            <button class="btn" style="width:100%;margin-top:12px" onclick="startCarpoolTracking(${Number(item.offerId)}, 'DRIVER')">
+                                🚗 Hasi karpool bidaia gidari gisa
+                            </button>
+                        ` : `
+                            <div style="margin-top:12px;padding:10px;border-radius:12px;background:#ecfdf5;color:#166534;font-weight:900">
+                                Bidaiaria zara: gidariak hasiko du GPS bidaia.
+                            </div>
+                        `}
+                    </div>
+                `;
+            }).join('')}
+        </div>
     `;
 }
 
@@ -1189,28 +1293,68 @@ function setCarpoolTab(tab) {
     renderCarpool();
 }
 
+function carpoolMatchesSearch(rider, value) {
+    const text = [
+        rider.name,
+        rider.trip,
+        rider.from,
+        rider.to,
+        rider.department,
+        rider.time
+    ].join(' ');
+
+    return normalizeText(text).includes(value);
+}
+
 function filterRiders() {
     const input = document.getElementById('riderSearch');
     const value = normalizeText(input?.value || '');
 
-    const baseRiders = getRidersFromUserCity();
+    // Sin búsqueda enseñamos los viajes cercanos al pueblo del usuario.
+    // Con búsqueda usamos TODAS las ofertas activas para que el filtro encuentre abiapuntua o helmuga.
+    const baseRiders = value ? state.riders : getRidersFromUserCity();
 
     const filtered = !value
         ? baseRiders
-        : baseRiders.filter(r =>
-            normalizeText(r.name).includes(value) ||
-            normalizeText(r.trip).includes(value) ||
-            normalizeText(r.department).includes(value) ||
-            normalizeText(r.time).includes(value)
-        );
+        : baseRiders.filter(r => carpoolMatchesSearch(r, value));
 
-    document.getElementById('carpoolContent').innerHTML = renderRiderCards(filtered);
+    document.getElementById('carpoolContent').innerHTML = renderRiderCards(filtered, Boolean(value));
 }
 
-async function joinRide(name) {
-    await api(`/api/carpool/join?userId=${currentUserId()}&riderName=${encodeURIComponent(name)}`, { method: 'POST' });
-    matomoEvent('Carpool', 'join', name);
-    showToast(`${name} erabiltzailearen bidaian batu zara`);
+async function joinRide(offerId, name) {
+    await api(`/api/carpool/join?userId=${currentUserId()}&offerId=${encodeURIComponent(offerId)}&riderName=${encodeURIComponent(name)}`, { method: 'POST' });
+    state.riders = [];
+    state.myCarpools = null;
+    matomoEvent('Carpool', 'join', String(offerId));
+    showToast(`${name} erabiltzailearen karpoolera batu zara. Gidariak tracking-a hasiko du.`);
+    await ensureData();
+    renderCarpool();
+}
+
+function startCarpoolTracking(offerId, role = 'DRIVER') {
+    if (String(role).toUpperCase() !== 'DRIVER') {
+        showToast('Bidaiariek ezin dute karpool GPS bidaia hasi. Gidariak hasiko du.');
+        return;
+    }
+
+    const offer = (state.myCarpools || []).find(item =>
+        Number(item.offerId) === Number(offerId) &&
+        String(item.role || '').toUpperCase() === 'DRIVER'
+    );
+
+    if (!offer) {
+        showToast('Karpool bidaia hau ez da zure gidari bidaia aktiboa.');
+        return;
+    }
+
+    state.activeCarpool = {
+        carpoolId: Number(offerId),
+        role: 'DRIVER'
+    };
+    localStorage.setItem('ecomoveActiveCarpool', JSON.stringify(state.activeCarpool));
+    matomoEvent('Carpool', 'start-tracking', 'DRIVER');
+    go('#/app/bidaia');
+    setTimeout(() => startTracking(), 300);
 }
 
 async function offerTrip(event) {
@@ -1222,13 +1366,26 @@ async function offerTrip(event) {
         time: form.get('time'),
         seats: Number(form.get('seats'))
     };
-    await api(`/api/carpool/offers?userId=${currentUserId()}`, {
+    const response = await api(`/api/carpool/offers?userId=${currentUserId()}`, {
         method: 'POST',
         body: JSON.stringify(data)
     });
+
+    state.lastCreatedCarpoolOffer = {
+        offerId: response.offerId,
+        ownerUserId: currentUserId(),
+        from: data.from,
+        to: data.to,
+        time: data.time,
+        seats: data.seats
+    };
+    localStorage.setItem('ecomoveDriverCarpoolOffer', JSON.stringify(state.lastCreatedCarpoolOffer));
+
     state.riders = [];
+    state.myCarpools = null;
     matomoEvent('Carpool', 'offer', 'publish');
-    showToast('Bidaia argitaratu da');
+    showToast('Bidaia argitaratu da. Orain karpool bidaia hasi dezakezu.');
+    await ensureData();
     renderCarpool();
 }
 
@@ -1766,7 +1923,11 @@ function logout() {
     matomoEvent('Auth', 'logout', 'profile');
 
     localStorage.removeItem('ecomoveUser');
+    localStorage.removeItem('ecomoveActiveCarpool');
+    localStorage.removeItem('ecomoveDriverCarpoolOffer');
     state.user = null;
+    state.activeCarpool = null;
+    state.lastCreatedCarpoolOffer = null;
     state.tracking = null;
     state.trackingSessionId = null;
     state.trackingStartedAt = null;
@@ -1870,6 +2031,7 @@ window.stopTracking = stopTracking;
 window.setCarpoolTab = setCarpoolTab;
 window.filterRiders = filterRiders;
 window.joinRide = joinRide;
+window.startCarpoolTracking = startCarpoolTracking;
 window.offerTrip = offerTrip;
 window.searchRoute = searchRoute;
 window.selectLine = selectLine;
