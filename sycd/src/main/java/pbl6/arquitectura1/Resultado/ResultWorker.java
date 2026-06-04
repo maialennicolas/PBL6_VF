@@ -2,7 +2,6 @@ package pbl6.arquitectura1.Resultado;
 
 import java.io.IOException;
 import java.util.Map;
-import java.util.Scanner;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeoutException;
 
@@ -22,7 +21,7 @@ public class ResultWorker {
 
     ConnectionFactory factory;
 
-    // userId:sessionId -> clasificacion final
+    // userId:sessionId -> mensaje resultado final
     Map<String, String> resultados = new ConcurrentHashMap<>();
 
     public ResultWorker() {
@@ -77,7 +76,7 @@ public class ResultWorker {
 
                 } catch (InterruptedException e) {
 
-                    e.printStackTrace();
+                    Thread.currentThread().interrupt();
                 }
             }
 
@@ -110,7 +109,7 @@ public class ResultWorker {
 
             String mensaje = new String(body, "UTF-8");
 
-            String[] p = mensaje.split(" ");
+            String[] p = mensaje.trim().split("\\s+");
 
             if (p.length < 6) {
 
@@ -127,34 +126,19 @@ public class ResultWorker {
 
             String clasificacion = p[2];
 
-            // PRIORIDAD:
-            // BUS/TREN > KOTXEA
+            if (clasificacion.equals("BUS") || clasificacion.equals("TREN")) {
 
-            if (clasificacion.equals("BUS") ||
-                    clasificacion.equals("TREN")) {
-
-                resultados.put(resultadoKey, mensaje);
-
-                imprimirResultado(mensaje);
+                guardarSiMejora(resultadoKey, mensaje);
 
             } else if (clasificacion.equals("KOTXEA")) {
 
-                // Esperar por si llega BUS/TREN
+                // Esperar por si también llega BUS/TREN.
                 new Thread(() -> {
 
                     try {
 
                         Thread.sleep(2000);
-
-                        String actual = resultados.get(resultadoKey);
-
-                        // Si nadie ha actualizado el resultado
-                        if (actual == null) {
-
-                            resultados.put(resultadoKey, mensaje);
-
-                            imprimirResultado(mensaje);
-                        }
+                        guardarSiMejora(resultadoKey, mensaje);
 
                     } catch (Exception e) {
 
@@ -165,10 +149,7 @@ public class ResultWorker {
 
             } else {
 
-                // OINEZ / KORRIKA / etc
-                resultados.put(resultadoKey, mensaje);
-
-                imprimirResultado(mensaje);
+                guardarSiMejora(resultadoKey, mensaje);
             }
 
             getChannel().basicAck(
@@ -177,9 +158,36 @@ public class ResultWorker {
         }
     }
 
+    private void guardarSiMejora(String resultadoKey, String mensaje) {
+        String actual = resultados.get(resultadoKey);
+        String nuevaClasificacion = clasificacion(mensaje);
+        String clasificacionActual = clasificacion(actual);
+
+        if (actual == null || prioridad(nuevaClasificacion) > prioridad(clasificacionActual)) {
+            resultados.put(resultadoKey, mensaje);
+            imprimirResultado(mensaje);
+        }
+    }
+
+    private String clasificacion(String mensaje) {
+        if (mensaje == null || mensaje.isBlank()) return "";
+        String[] p = mensaje.trim().split("\\s+");
+        return p.length >= 3 ? p[2] : "";
+    }
+
+    private int prioridad(String clasificacion) {
+        if (clasificacion == null) return 0;
+        return switch (clasificacion) {
+            case "BUS", "TREN" -> 3;
+            case "KOTXEA" -> 2;
+            case "OINEZ", "KORRIKA", "TXIRRINA", "PATINETE" -> 1;
+            default -> 0;
+        };
+    }
+
     private void imprimirResultado(String mensaje) {
 
-        String[] p = mensaje.split(" ");
+        String[] p = mensaje.trim().split("\\s+");
 
         int userId = Integer.parseInt(p[0]);
 
@@ -204,22 +212,7 @@ public class ResultWorker {
 
     public static void main(String[] args) {
 
-        Scanner teclado = new Scanner(System.in);
-
-        System.out.println("Pulsa ENTER para parar.");
-
         ResultWorker worker = new ResultWorker();
-
-        new Thread(() -> {
-
-            teclado.nextLine();
-
-            worker.parar();
-
-        }).start();
-
         worker.suscribir();
-
-        teclado.close();
     }
 }

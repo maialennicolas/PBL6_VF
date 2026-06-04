@@ -1,7 +1,7 @@
 package pbl6.arquitectura1.Worker;
 
 import java.io.IOException;
-import java.util.Scanner;
+import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeoutException;
@@ -47,9 +47,9 @@ public class WorkerKP {
             channel.basicQos(4);
             channel.basicConsume(KafkaStreamConfig.QUEUE_KP, false, new MiConsumer(channel));
 
-            System.out.println("[WorkerKP - Estrategia C] Instancia activa. Compitiendo con Pool de 4 hilos...");
+            System.out.println("[WorkerKP - Estrategia C] Instancia activa. Transporte público con media/máxima...");
             synchronized (this) {
-                try { wait(); } catch (InterruptedException e) { e.printStackTrace(); }
+                try { wait(); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
             }
             pool.shutdown();
             channel.close();
@@ -60,10 +60,16 @@ public class WorkerKP {
 
     public synchronized void parar() { notify(); }
 
-    String clasificar(double velocidad, double lat, double lon) {
+    String clasificar(ResumenWorker resumen) {
+        double lat = parseDouble(resumen.lat);
+        double lon = parseDouble(resumen.lon);
         if (!paradasLoader.cercaDeParada(lat, lon)) return null;
-        if (velocidad >= 15.0 && velocidad <= 60.0) return "BUS";
-        if (velocidad > 60.0 && velocidad <= 200.0) return "TREN";
+
+        // Usamos media y máxima. La velocidad final puede ser baja si el usuario termina parado en una parada.
+        double velocidadReferencia = Math.max(resumen.velocidadMediaKmh, resumen.velocidadMaxKmh * 0.70);
+
+        if (resumen.distanciaMetros >= 500.0 && velocidadReferencia >= 15.0 && velocidadReferencia <= 65.0) return "BUS";
+        if (resumen.distanciaMetros >= 1000.0 && velocidadReferencia > 65.0 && velocidadReferencia <= 200.0) return "TREN";
         return null;
     }
 
@@ -81,42 +87,45 @@ public class WorkerKP {
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
+                    try {
+                        synchronized (getChannel()) {
+                            getChannel().basicNack(envelope.getDeliveryTag(), false, false);
+                        }
+                    } catch (IOException ex) {
+                        ex.printStackTrace();
+                    }
                 }
             });
         }
     }
 
     private void procesarMensaje(String mensaje) throws IOException, TimeoutException {
-        String[] p = mensaje.split(" ");
-        if (p.length < 8) return;
+        ResumenWorker resumen = ResumenWorker.parse(mensaje);
+        if (resumen == null) return;
 
-        int    userId    = Integer.parseInt(p[0]);
-        int    empresaId = Integer.parseInt(p[1]);
-        double velocidad = Double.parseDouble(p[3]);
-        double lat       = Double.parseDouble(p[5]);
-        double lon       = Double.parseDouble(p[6]);
-        String timestamp = p[7];
-        String sessionId = p.length >= 9 ? p[8] : "";
-
-        String clasificacion = clasificar(velocidad, lat, lon);
+        String clasificacion = clasificar(resumen);
 
         if (clasificacion != null) {
-            String resultado = userId + " " + empresaId + " " + clasificacion + " " + lat + " " + lon + " " + timestamp + " " + sessionId;
+            String resultado = resumen.resultado(clasificacion);
             synchronized (factory) {
                 try (Connection conn = factory.newConnection(); Channel ch = conn.createChannel()) {
                     ch.basicPublish(KafkaStreamConfig.EXCHANGE_EMAITZA, KafkaStreamConfig.QUEUE_EMAITZA, null, resultado.getBytes());
                 }
             }
             String horaActual = new java.text.SimpleDateFormat("HH:mm:ss.SSS").format(new java.util.Date());
-            System.out.println("[" + horaActual + "] [WorkerKP - Instancia] USER " + userId + " → " + clasificacion);
+            System.out.println(String.format(Locale.US,
+                    "[%s] [WorkerKP - Instancia] USER %d → %s (dist=%.0fm, vMedia=%.2f, vMax=%.2f)",
+                    horaActual, resumen.userId, clasificacion, resumen.distanciaMetros,
+                    resumen.velocidadMediaKmh, resumen.velocidadMaxKmh));
         }
     }
 
+    private double parseDouble(String value) {
+        try { return Double.parseDouble(value); } catch (Exception e) { return 0.0; }
+    }
+
     public static void main(String[] args) {
-        Scanner teclado = new Scanner(System.in);
-        System.out.println("Pulsa ENTER para parar.");
         WorkerKP worker = new WorkerKP();
-        new Thread(() -> { teclado.nextLine(); worker.parar(); teclado.close(); }).start();
         worker.suscribir();
     }
 }
