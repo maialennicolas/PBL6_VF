@@ -12,5 +12,12 @@ public record Trip(
         String date,
         String icon,
         String points,
-        String status
+        String status,
+        String tripTypeIcon,
+        boolean carpool,
+        String carpoolId,
+        int passengers,
+        String carpoolRole,
+        String co2Consumed,
+        String co2Saved
 ) {}

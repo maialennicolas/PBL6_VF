@@ -9,5 +9,7 @@ public record Rider(
         String time,
         boolean electric,
         String initials,
-        String department
+        String department,
+        String from,
+        String to
 ) {}
