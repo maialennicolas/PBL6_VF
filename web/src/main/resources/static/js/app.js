@@ -900,7 +900,7 @@ function stopLocationTimer() {
 function startLocationTimer() {
     stopLocationTimer();
 
-    state.trackingLocationTimer = setInterval(saveCurrentLocationPoint, 60000);
+    state.trackingLocationTimer = setInterval(saveCurrentLocationPoint, 20000);
 }
 
 async function saveCurrentLocationPoint(eventType = 'LOCATION') {
