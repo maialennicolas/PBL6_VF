@@ -23,11 +23,9 @@ services:
       RABBITMQ_PORT: 5672
       RABBITMQ_USER: guest
       RABBITMQ_PASS: guest
-      # Conexión a la base de datos de Matomo
       SPRING_DATASOURCE_URL: jdbc:mysql://matomo-db:3306/matomo?allowPublicKeyRetrieval=true&useSSL=false
       SPRING_DATASOURCE_USERNAME: matomo
       SPRING_DATASOURCE_PASSWORD: matomo
-      # Corrección de dialecto para compatibilidad con MariaDB 11
       SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: org.hibernate.dialect.MariaDBDialect
       SPRING_JPA_HIBERNATE_DDL_AUTO: none
     volumes:
@@ -79,12 +77,15 @@ services:
       MATOMO_DATABASE_DBNAME: matomo
     volumes:
       - matomo_app:/var/www/html
+      # === CAMBIO CLAVE: Mapeamos también la carpeta de configuración ===
+      - matomo_config:/var/www/html/config 
     depends_on:
       - matomo-db
 
   grafana:
     image: grafana/grafana-oss:latest
     container_name: ecomove-grafana
+    user: "0" # === CAMBIO CLAVE: Le da permisos de Administrador (root) para poder escribir en tu disco duro de Windows ===
     ports:
       - "3000:3000"
     volumes:
@@ -95,4 +96,5 @@ services:
 volumes:
   matomo_db:
   matomo_app:
+  matomo_config: # Nuevo volumen para la configuración de Matomo
   grafana_data:
