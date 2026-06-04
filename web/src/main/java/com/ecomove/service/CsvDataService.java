@@ -86,13 +86,58 @@ public class CsvDataService {
 
         try {
             if (!Files.exists(path)) {
-                Files.writeString(path, String.join(",", headers) + System.lineSeparator(), StandardCharsets.UTF_8);
+                Files.writeString(path, toCsvLine(headers) + System.lineSeparator(), StandardCharsets.UTF_8);
             }
 
-            String line = toCsvLine(values) + System.lineSeparator();
+            List<String> currentHeaders = readHeaders(filename);
+            List<String> mergedHeaders = new ArrayList<>(currentHeaders);
+            boolean changed = false;
+
+            for (String header : headers) {
+                if (!mergedHeaders.contains(header)) {
+                    mergedHeaders.add(header);
+                    changed = true;
+                }
+            }
+
+            if (changed) {
+                List<Map<String, String>> rows = readRows(filename);
+                writeRows(filename, mergedHeaders, rows);
+                currentHeaders = mergedHeaders;
+            }
+
+            Map<String, String> row = new LinkedHashMap<>();
+            for (int i = 0; i < headers.size(); i++) {
+                row.put(headers.get(i), i < values.size() ? values.get(i) : "");
+            }
+
+            List<String> lineValues = currentHeaders.stream()
+                    .map(header -> row.getOrDefault(header, ""))
+                    .toList();
+
+            String line = toCsvLine(lineValues) + System.lineSeparator();
             Files.writeString(path, line, StandardCharsets.UTF_8, StandardOpenOption.APPEND);
         } catch (IOException e) {
             throw new IllegalStateException("No se ha podido guardar en el CSV: " + filename, e);
+        }
+    }
+
+    public synchronized List<String> readHeaders(String filename) {
+        ensureDataDir();
+        Path path = dataDir.resolve(filename);
+
+        if (!Files.exists(path)) {
+            return List.of();
+        }
+
+        try {
+            List<String> lines = Files.readAllLines(path, StandardCharsets.UTF_8);
+            if (lines.isEmpty()) {
+                return List.of();
+            }
+            return parseLine(lines.get(0).replace("\uFEFF", ""));
+        } catch (IOException e) {
+            throw new IllegalStateException("No se ha podido leer la cabecera del CSV: " + filename, e);
         }
     }
 

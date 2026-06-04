@@ -118,20 +118,33 @@ public class EcoMoveController {
             @RequestParam long userId,
             @RequestParam String sessionId,
             @RequestParam(required = false, defaultValue = "0") long durationSeconds,
-            @RequestParam(required = false) String endTimestamp) {
-        return service.stopTracking(userId, sessionId, durationSeconds, endTimestamp);
+            @RequestParam(required = false) String endTimestamp,
+            @RequestParam(required = false, defaultValue = "0") long carpoolId,
+            @RequestParam(required = false, defaultValue = "NONE") String rolCarpool) {
+        return service.stopTracking(userId, sessionId, durationSeconds, endTimestamp, carpoolId, rolCarpool);
     }
 
     @PostMapping("/carpool/offers")
     public Map<String, Object> offerTrip(@RequestParam long userId, @RequestBody CarpoolOfferRequest request) {
-        service.offerTrip(userId, request);
-        return Map.of("ok", true, "message", "Bidaia data/carpool_ofertas.csv fitxategian gorde da");
+        long offerId = service.offerTrip(userId, request);
+        return Map.of(
+                "ok", true,
+                "offerId", offerId,
+                "message", "Bidaia data/carpool_ofertas.csv fitxategian gorde da");
     }
 
     @PostMapping("/carpool/join")
-    public Map<String, Object> joinRide(@RequestParam long userId, @RequestParam String riderName) {
-        service.joinRide(userId, riderName);
+    public Map<String, Object> joinRide(
+            @RequestParam long userId,
+            @RequestParam(required = false, defaultValue = "0") long offerId,
+            @RequestParam(required = false, defaultValue = "") String riderName) {
+        service.joinRide(userId, offerId, riderName);
         return Map.of("ok", true, "message", "Bidaia elkartzea data/carpool_uniones.csv fitxategian gorde da");
+    }
+
+    @GetMapping("/carpool/my")
+    public List<Map<String, Object>> myCarpools(@RequestParam long userId) {
+        return service.getMyCarpools(userId);
     }
 
     @GetMapping("/corporate")

@@ -41,10 +41,13 @@ public class EcoMoveService {
             "destino",
             "km",
             "co2",
+            "co2ConsumidoKg",
+            "co2AhorradoKg",
             "modo",
             "duracionMin",
             "puntos",
             "icono",
+            "tripTypeIcon",
             "sessionID",
             "startTimestamp",
             "endTimestamp",
@@ -54,7 +57,12 @@ public class EcoMoveService {
             "destinoLon",
             "duracionSeg",
             "durationText",
-            "estadoCalculo");
+            "estadoCalculo",
+            "carpoolID",
+            "esCarpool",
+            "numPasajeros",
+            "rolCarpool",
+            "carpoolDriverSessionID");
     private static final List<String> REDEMPTION_HEADERS = List.of("redencionID", "userID", "rewardID", "fecha",
             "puntos");
     private static final List<String> OFFER_HEADERS = List.of("offerID", "userID", "origen", "destino", "time", "seats",
@@ -64,7 +72,7 @@ public class EcoMoveService {
             "altitude");
 
     private static final List<String> JOIN_HEADERS = List.of(
-            "joinID", "userID", "riderName", "fecha");
+            "joinID", "offerID", "userID", "riderName", "rol", "fecha", "estado");
 
     private final UserCsvService userCsvService;
     private final CsvDataService csv;
@@ -147,7 +155,8 @@ public class EcoMoveService {
         List<Map<String, String>> trips = userTripRows(userId);
         double co2 = trips.stream().mapToDouble(row -> parseDouble(row.get("co2"))).sum();
         double cleanKm = trips.stream()
-                .filter(row -> !row.getOrDefault("modo", "").equalsIgnoreCase("Autoa"))
+                .filter(row -> !row.getOrDefault("modo", "").equalsIgnoreCase("Autoa")
+                        || Boolean.parseBoolean(row.getOrDefault("esCarpool", "false")))
                 .mapToDouble(row -> parseDouble(row.get("km"))).sum();
         int points = trips.stream().mapToInt(row -> parseInt(row.get("puntos"))).sum() - redeemedPoints(userId);
         int tripCount = trips.size();
@@ -265,17 +274,22 @@ public class EcoMoveService {
                             .map(Empresa::nombre)
                             .orElse("EcoMove");
 
+                    String origin = row.getOrDefault("origen", "");
+                    String destination = row.getOrDefault("destino", "");
+
                     return new Rider(
                             parseLong(row.get("offerID")),
                             driver.nombre() + " " + driver.apellidos(),
                             row.getOrDefault("distance", "0 km"),
                             parseDouble(row.get("rating")),
-                            row.getOrDefault("origen", "") + " → " + row.getOrDefault("destino", ""),
+                            origin + " → " + destination,
                             row.getOrDefault("time", ""),
                             driver.modeloCocheID().toUpperCase().contains("TESLA")
                                     || driver.modeloCocheID().toUpperCase().contains("EV"),
                             getInitials(driver.nombre() + " " + driver.apellidos()),
-                            company);
+                            company,
+                            origin,
+                            destination);
                 })
                 .filter(rider -> rider != null)
                 .toList();
@@ -362,7 +376,8 @@ public class EcoMoveService {
         return buildTrackingStatus(request.userId(), request.sessionId(), true);
     }
 
-    public TrackingStatus stopTracking(long userId, String sessionId, long durationSeconds, String endTimestamp) {
+    public TrackingStatus stopTracking(long userId, String sessionId, long durationSeconds, String endTimestamp,
+                                       long carpoolId, String rolCarpool) {
         String finalEndTimestamp = safe(endTimestamp, Instant.now().toString());
 
         List<Map<String, String>> locations = trackingRows(userId, sessionId);
@@ -396,6 +411,15 @@ public class EcoMoveService {
 
         long tripId = csv.nextId(TRIPS_FILE, "tripID");
 
+        Map<String, String> carpoolOffer = carpoolId > 0 ? carpoolOfferById(carpoolId) : null;
+        boolean isCarpool = carpoolOffer != null && parseLong(carpoolOffer.get("userID")) == userId;
+        if (carpoolId > 0 && !isCarpool) {
+            throw new IllegalStateException("Solo el conductor puede iniciar o cerrar un viaje carpool");
+        }
+
+        String normalizedRole = isCarpool ? "DRIVER" : "NONE";
+        int passengerCount = isCarpool ? countCarpoolPeople(carpoolId) : 1;
+
         csv.appendRow(TRIPS_FILE, TRIP_HEADERS, List.of(
                 String.valueOf(tripId),
                 String.valueOf(userId),
@@ -406,10 +430,13 @@ public class EcoMoveService {
 
                 formatOne(km),
                 "0.0",
+                "0.0",
+                "0.0",
                 "SIN_CALCULAR",
                 String.valueOf(durationMin),
                 "0",
                 "🧭",
+                isCarpool ? "👥" : "👤",
 
                 sessionId,
                 startTimestamp,
@@ -422,7 +449,16 @@ public class EcoMoveService {
 
                 String.valueOf(finalDurationSeconds),
                 durationText,
-                "PROCESANDO_SYCD"));
+                "PROCESANDO_SYCD",
+                isCarpool ? String.valueOf(carpoolId) : "",
+                String.valueOf(isCarpool),
+                String.valueOf(passengerCount),
+                normalizedRole,
+                ""));
+
+        if (isCarpool) {
+            deactivateCarpoolOffer(carpoolId);
+        }
 
         Map<String, String> lastPoint = lastTrackingLocation(locations);
         boolean sentToSycd = publishTrackingEvent(locationRequestFromRow(userId, sessionId, lastPoint), true, finalEndTimestamp);
@@ -622,9 +658,10 @@ public class EcoMoveService {
         return earthRadiusKm * c;
     }
 
-    public void offerTrip(long userId, CarpoolOfferRequest request) {
+    public long offerTrip(long userId, CarpoolOfferRequest request) {
+        long offerId = csv.nextId(OFFERS_FILE, "offerID");
         csv.appendRow(OFFERS_FILE, OFFER_HEADERS, List.of(
-                String.valueOf(csv.nextId(OFFERS_FILE, "offerID")),
+                String.valueOf(offerId),
                 String.valueOf(userId),
                 safe(request.from(), ""),
                 safe(request.to(), ""),
@@ -633,14 +670,149 @@ public class EcoMoveService {
                 "true",
                 "0.5 km",
                 "4.7"));
+        return offerId;
     }
 
-    public void joinRide(long userId, String riderName) {
+    public void joinRide(long userId, long offerId, String riderName) {
+        Map<String, String> offer = carpoolOfferById(offerId);
+        if (offer == null || !Boolean.parseBoolean(offer.getOrDefault("active", "false"))) {
+            throw new IllegalArgumentException("Karpool oferta ez da existitzen edo dagoeneko amaituta dago");
+        }
+
+        long driverId = parseLong(offer.get("userID"));
+        if (driverId == userId) {
+            throw new IllegalArgumentException("Gidaria ezin da bere karpoolera bidaiari gisa batu");
+        }
+
+        boolean alreadyJoined = csv.readRows(JOINS_FILE).stream()
+                .filter(row -> parseLong(row.get("offerID")) == offerId)
+                .filter(row -> parseLong(row.get("userID")) == userId)
+                .anyMatch(row -> row.getOrDefault("estado", "CONFIRMADO").equalsIgnoreCase("CONFIRMADO"));
+        if (alreadyJoined) {
+            return;
+        }
+
+        String driverName = userCsvService.findById(driverId)
+                .map(driver -> driver.nombre() + " " + driver.apellidos())
+                .orElse(riderName);
+
         csv.appendRow(JOINS_FILE, JOIN_HEADERS, List.of(
                 String.valueOf(csv.nextId(JOINS_FILE, "joinID")),
+                String.valueOf(offerId),
                 String.valueOf(userId),
-                safe(riderName, ""),
-                LocalDate.now().toString()));
+                safe(driverName, ""),
+                "PASSENGER",
+                LocalDate.now().toString(),
+                "CONFIRMADO"));
+    }
+
+
+    public List<Map<String, Object>> getMyCarpools(long userId) {
+        List<User> users = userCsvService.getAllUsers();
+        List<Map<String, String>> offers = csv.readRows(OFFERS_FILE);
+        List<Map<String, Object>> result = new ArrayList<>();
+
+        for (Map<String, String> offer : offers) {
+            long offerId = parseLong(offer.get("offerID"));
+            long driverId = parseLong(offer.get("userID"));
+            boolean active = Boolean.parseBoolean(offer.getOrDefault("active", "false"));
+            if (active && driverId == userId) {
+                result.add(carpoolSummary(offer, "DRIVER", users));
+            }
+        }
+
+        for (Map<String, String> join : csv.readRows(JOINS_FILE)) {
+            if (parseLong(join.get("userID")) != userId) {
+                continue;
+            }
+            if (!join.getOrDefault("estado", "CONFIRMADO").equalsIgnoreCase("CONFIRMADO")) {
+                continue;
+            }
+
+            long offerId = parseLong(join.get("offerID"));
+            Map<String, String> offer = carpoolOfferById(offerId);
+            if (offer == null || !Boolean.parseBoolean(offer.getOrDefault("active", "false"))) {
+                continue;
+            }
+            result.add(carpoolSummary(offer, "PASSENGER", users));
+        }
+
+        return result.stream()
+                .sorted(Comparator.comparing(item -> String.valueOf(item.getOrDefault("time", ""))))
+                .toList();
+    }
+
+    private Map<String, Object> carpoolSummary(Map<String, String> offer, String role, List<User> users) {
+        long offerId = parseLong(offer.get("offerID"));
+        long driverId = parseLong(offer.get("userID"));
+        User driver = users.stream()
+                .filter(user -> user.userID() == driverId)
+                .findFirst()
+                .orElse(null);
+
+        String driverName = driver == null
+                ? "Gidaria"
+                : driver.nombre() + " " + driver.apellidos();
+
+        Map<String, Object> item = new LinkedHashMap<>();
+        item.put("offerId", offerId);
+        item.put("driverId", driverId);
+        item.put("driverName", driverName);
+        item.put("from", offer.getOrDefault("origen", ""));
+        item.put("to", offer.getOrDefault("destino", ""));
+        item.put("time", offer.getOrDefault("time", ""));
+        item.put("seats", parseInt(offer.get("seats")));
+        item.put("passengers", countCarpoolPeople(offerId));
+        item.put("role", role);
+        item.put("status", offer.getOrDefault("active", "false").equalsIgnoreCase("true") ? "PENDIENTE" : "FINALIZADO");
+        item.put("canStart", "DRIVER".equalsIgnoreCase(role));
+        return item;
+    }
+
+    private void deactivateCarpoolOffer(long offerId) {
+        if (offerId <= 0) {
+            return;
+        }
+
+        List<Map<String, String>> offers = new ArrayList<>(csv.readRows(OFFERS_FILE));
+        boolean changed = false;
+        for (Map<String, String> offer : offers) {
+            if (parseLong(offer.get("offerID")) == offerId) {
+                offer.put("active", "false");
+                changed = true;
+            }
+        }
+
+        if (changed) {
+            csv.writeRows(OFFERS_FILE, OFFER_HEADERS, offers);
+        }
+    }
+
+
+    private Map<String, String> carpoolOfferById(long offerId) {
+        if (offerId <= 0) {
+            return null;
+        }
+
+        return csv.readRows(OFFERS_FILE).stream()
+                .filter(row -> parseLong(row.get("offerID")) == offerId)
+                .findFirst()
+                .orElse(null);
+    }
+
+    private int countCarpoolPeople(long offerId) {
+        if (offerId <= 0) {
+            return 1;
+        }
+
+        long confirmedPassengers = csv.readRows(JOINS_FILE).stream()
+                .filter(row -> parseLong(row.get("offerID")) == offerId)
+                .filter(row -> row.getOrDefault("estado", "CONFIRMADO").equalsIgnoreCase("CONFIRMADO"))
+                .map(row -> parseLong(row.get("userID")))
+                .distinct()
+                .count();
+
+        return Math.max(1, (int) confirmedPassengers + 1);
     }
 
     public boolean redeemReward(long userId, long rewardId) {
@@ -859,6 +1031,12 @@ public class EcoMoveService {
         String mode = row.getOrDefault("modo", "SIN_CALCULAR");
         String status = row.getOrDefault("estadoCalculo", "CALCULADO");
 
+        boolean isCarpool = Boolean.parseBoolean(row.getOrDefault("esCarpool", "false"));
+        int passengers = Math.max(1, parseInt(row.get("numPasajeros")));
+        String tripTypeIcon = row.getOrDefault("tripTypeIcon", isCarpool ? "👥" : "👤");
+        double co2Saved = parseDouble(row.getOrDefault("co2AhorradoKg", row.get("co2")));
+        double co2Consumed = parseDouble(row.getOrDefault("co2ConsumidoKg", "0"));
+
         return new Trip(
                 parseLong(row.get("tripID")),
                 row.getOrDefault("sessionID", ""),
@@ -871,7 +1049,14 @@ public class EcoMoveService {
                 row.getOrDefault("fecha", ""),
                 row.getOrDefault("icono", iconForMode(mode)),
                 "+" + parseInt(row.get("puntos")) + " pts",
-                status);
+                status,
+                tripTypeIcon,
+                isCarpool,
+                row.getOrDefault("carpoolID", ""),
+                passengers,
+                row.getOrDefault("rolCarpool", "NONE"),
+                formatOne(co2Consumed) + " kg",
+                formatOne(co2Saved) + " kg");
     }
 
     private int redeemedPoints(long userId) {

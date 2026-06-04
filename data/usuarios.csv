@@ -11,3 +11,6 @@ userID,empresaID,nombre,apellidos,nombreUsuario,contrasena,email,tieneCoche,mode
 10,101,Nerea,Mendizabal,prueba3,123456,prueba3@ecomove.eus,true,LAND_ROVER_DISCOVERY_SPORT_D,Bilbo
 11,101,mai,nico,mai,12345,mai@ecomove.eus,true,TESLA_MODEL_X,Oñati
 12,101,alex,hers,alex,12345,alex@ecomove.eus,true,CITROEN_C5_AIRCROSS_D,Antzuola
+13,101,Ene,Grana,ene,12345,ene@ecomove.eus,true,FORD_KUGA_PHEV,Laudio
+14,101,ibai,lazkano,lazkano,12345,lazkano@ecomove.eus,true,SEAT_IBIZA_G,Aretxabaleta
+15,101,Mikel,Uribe,uribe,12345,uribe@ecomove.eus,true,KIA_EV6,Elorrio
