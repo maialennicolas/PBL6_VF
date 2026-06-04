@@ -9,7 +9,6 @@ import pbl6.arquitectura2.Config.TLSConfig;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.Scanner;
 
 public class Lainoa2 {
 
@@ -81,13 +80,10 @@ public class Lainoa2 {
     }
 
     public static void main(String[] args) {
-        System.out.println("[Lainoa2] Servicio iniciado. Pulsa ENTER para parar.");
+        System.out.println("[Lainoa2] Servicio iniciado.");
         try {
             Lainoa2 lainoa2 = new Lainoa2();
-            Scanner teclado = new Scanner(System.in);
-            new Thread(() -> { teclado.nextLine(); lainoa2.parar(); }).start();
             lainoa2.suscribir();
-            teclado.close();
         } catch (Exception e) {
             System.err.println("[Lainoa2] Error TLS: " + e.getMessage());
             e.printStackTrace();

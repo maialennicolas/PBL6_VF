@@ -40,25 +40,31 @@ public final class CsvTripResultUpdater {
 
     public static synchronized void updateResult(int userId, String sessionId, String sycdMode,
                                                  String lat, String lon, String timestamp) {
+        updateResultAndGet(userId, sessionId, sycdMode, lat, lon, timestamp);
+    }
+
+    public static synchronized UpdateSummary updateResultAndGet(int userId, String sessionId, String sycdMode,
+                                                                 String lat, String lon, String timestamp) {
         if (DbTripStore.isConfigured()) {
             try {
-                if (updateResultDb(userId, sessionId, sycdMode, lat, lon, timestamp)) {
-                    return;
+                UpdateSummary summary = updateResultDb(userId, sessionId, sycdMode, lat, lon, timestamp);
+                if (summary != null) {
+                    return summary;
                 }
             } catch (Exception e) {
                 System.err.println("[DbTripResultUpdater] Error actualizando BD, uso CSV de respaldo: " + e.getMessage());
                 e.printStackTrace();
             }
         }
-        updateResultCsv(userId, sessionId, sycdMode, lat, lon, timestamp);
+        return updateResultCsv(userId, sessionId, sycdMode, lat, lon, timestamp);
     }
 
-    private static void updateResultCsv(int userId, String sessionId, String sycdMode,
-                                        String lat, String lon, String timestamp) {
+    private static UpdateSummary updateResultCsv(int userId, String sessionId, String sycdMode,
+                                                 String lat, String lon, String timestamp) {
         Path dataDir = CsvUtil.dataDir();
         try {
             List<String> headers = ensureHeaders(CsvUtil.readHeaders(dataDir, TRIPS_FILE));
-            if (headers.isEmpty()) return;
+            if (headers.isEmpty()) return null;
 
             List<Map<String, String>> trips = new ArrayList<>(CsvUtil.readRows(dataDir, TRIPS_FILE));
 
@@ -76,7 +82,7 @@ public final class CsvTripResultUpdater {
 
             if (target == null) {
                 System.err.println("[CsvTripResultUpdater] No encuentro viaje para user=" + userId + " session=" + sessionId);
-                return;
+                return null;
             }
 
             String webMode = normalizeMode(sycdMode);
@@ -111,20 +117,25 @@ public final class CsvTripResultUpdater {
                     emission.points,
                     isCarpool,
                     peopleInCarpool));
+            return new UpdateSummary(userId,
+                    target.getOrDefault("sessionID", sessionId == null ? "" : sessionId),
+                    sycdMode, webMode, km, emission.consumedKg, emission.savedKg, emission.points,
+                    isCarpool, peopleInCarpool);
         } catch (Exception e) {
             System.err.println("[CsvTripResultUpdater] Error actualizando CSV: " + e.getMessage());
             e.printStackTrace();
         }
+        return null;
     }
 
 
-    private static boolean updateResultDb(int userId, String sessionId, String sycdMode,
-                                          String lat, String lon, String timestamp) throws Exception {
+    private static UpdateSummary updateResultDb(int userId, String sessionId, String sycdMode,
+                                                String lat, String lon, String timestamp) throws Exception {
         List<String> headers = DbTripStore.TRIP_HEADERS;
         List<Map<String, String>> trips = new ArrayList<>(DbTripStore.readRows("viajes_ecomove", headers, "tripID"));
         if (trips.isEmpty()) {
             System.err.println("[DbTripResultUpdater] No hay viajes en BD todavía");
-            return false;
+            return null;
         }
 
         Map<String, String> target = null;
@@ -141,7 +152,7 @@ public final class CsvTripResultUpdater {
 
         if (target == null) {
             System.err.println("[DbTripResultUpdater] No encuentro viaje en BD para user=" + userId + " session=" + sessionId);
-            return false;
+            return null;
         }
 
         String webMode = normalizeMode(sycdMode);
@@ -176,7 +187,10 @@ public final class CsvTripResultUpdater {
                 emission.points,
                 isCarpool,
                 peopleInCarpool));
-        return true;
+        return new UpdateSummary(userId,
+                target.getOrDefault("sessionID", sessionId == null ? "" : sessionId),
+                sycdMode, webMode, km, emission.consumedKg, emission.savedKg, emission.points,
+                isCarpool, peopleInCarpool);
     }
 
     private static void upsertPassengerTripsDb(List<String> headers,
@@ -731,6 +745,17 @@ public final class CsvTripResultUpdater {
             return value == null || value.isBlank() ? fallback : value;
         }
     }
+
+    public record UpdateSummary(int userId,
+                                String sessionId,
+                                String sycdMode,
+                                String webMode,
+                                double km,
+                                double co2ConsumidoKg,
+                                double co2AhorradoKg,
+                                int puntos,
+                                boolean carpool,
+                                int personas) {}
 
     private record CarInfo(String modelId, double kgKm, String type, boolean electric) {}
     private record EmissionResult(double consumedKg, double savedKg, int points) {}
