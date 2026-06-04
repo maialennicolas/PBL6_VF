@@ -85,15 +85,15 @@ public class EcoMoveService {
     }
 
     public AuthResponse login(LoginRequest request) {
-        Optional<User> userOptional = userCsvService.findByNombreUsuario(request.nombreUsuario());
+        Optional<Usuario> userOptional = userCsvService.findByNombreUsuario(request.nombreUsuario());
 
         if (userOptional.isEmpty()) {
             return new AuthResponse(false, "Usuario no encontrado", null);
         }
 
-        User user = userOptional.get();
+        Usuario user = userOptional.get();
 
-        if (!user.contrasena().equals(request.contrasena())) {
+        if (!user.getContrasena().equals(request.contrasena())) {
             return new AuthResponse(false, "Contraseña incorrecta", null);
         }
 
@@ -119,7 +119,7 @@ public class EcoMoveService {
                 ? request.nombreUsuario() + "@ecomove.local"
                 : request.email();
 
-        User user = new User(
+        Usuario user = new Usuario(
                 newId,
                 request.empresaID(),
                 request.nombre(),
@@ -141,14 +141,14 @@ public class EcoMoveService {
     }
 
     public DashboardResponse getDashboard(long userId) {
-        User user = getUser(userId);
+        Usuario user = getUser(userId);
         return new DashboardResponse(
                 buildProfile(user),
-                getStats(user.userID()),
-                getMonthlyStats(user.userID()),
-                getTransportShare(user.userID()),
-                getRecentTrips(user.userID()),
-                getRecommendedRoute(user.userID()));
+                getStats(user.getUserID()),
+                getMonthlyStats(user.getUserID()),
+                getTransportShare(user.getUserID()),
+                getRecentTrips(user.getUserID()),
+                getRecommendedRoute(user.getUserID()));
     }
 
     public List<StatCard> getStats(long userId) {
@@ -255,14 +255,14 @@ public class EcoMoveService {
     }
 
     public List<Rider> getRiders(long userId) {
-        List<User> users = userCsvService.getAllUsers();
+        List<Usuario> users = userCsvService.getAllUsers();
 
         return csv.readRows(OFFERS_FILE).stream()
                 .filter(row -> Boolean.parseBoolean(row.getOrDefault("active", "false")))
                 .filter(row -> parseLong(row.get("userID")) != userId)
                 .map(row -> {
-                    User driver = users.stream()
-                            .filter(user -> user.userID() == parseLong(row.get("userID")))
+                    Usuario driver = users.stream()
+                            .filter(user -> user.getUserID() == parseLong(row.get("userID")))
                             .findFirst()
                             .orElse(null);
 
@@ -270,7 +270,7 @@ public class EcoMoveService {
                         return null;
                     }
 
-                    String company = userCsvService.findCompany(driver.empresaID())
+                    String company = userCsvService.findCompany(driver.getEmpresaID())
                             .map(Empresa::nombre)
                             .orElse("EcoMove");
 
@@ -279,7 +279,7 @@ public class EcoMoveService {
 
                     return new Rider(
                             parseLong(row.get("offerID")),
-                            driver.nombre() + " " + driver.apellidos(),
+                            driver.getNombre() + " " + driver.getApellidos(),
                             row.getOrDefault("distance", "0 km"),
                             parseDouble(row.get("rating")),
                             origin + " → " + destination,
@@ -482,7 +482,7 @@ public class EcoMoveService {
                 : request;
 
         long empresaId = userCsvService.findById(request.userId())
-                .map(User::empresaID)
+                .map(Usuario::getEmpresaID)
                 .orElse(0L);
 
         return sycdPublisher.publish(enriched, empresaId, meters, finished, eventTimestamp);
@@ -837,16 +837,16 @@ public class EcoMoveService {
     }
 
     public CorporateDashboard getCorporateDashboard(long userId) {
-        User currentUser = getUser(userId);
-        long empresaID = currentUser.empresaID();
+        Usuario currentUser = getUser(userId);
+        long empresaID = currentUser.getEmpresaID();
         int currentYear = LocalDate.now().getYear();
 
-        List<User> companyUsers = userCsvService.getAllUsers().stream()
-                .filter(user -> user.empresaID() == empresaID)
+        List<Usuario> companyUsers = userCsvService.getAllUsers().stream()
+                .filter(user -> user.getEmpresaID() == empresaID)
                 .toList();
 
         List<Long> userIds = companyUsers.stream()
-                .map(User::userID)
+                .map(Usuario::getUserID)
                 .toList();
 
         List<Map<String, String>> companyTrips = csv.readRows(TRIPS_FILE).stream()
@@ -913,7 +913,7 @@ public class EcoMoveService {
 
         List<Employee> topEmployees = companyUsers.stream()
                 .map(user -> {
-                    List<Map<String, String>> trips = userTripRows(user.userID()).stream()
+                    List<Map<String, String>> trips = userTripRows(user.getUserID()).stream()
                             .filter(row -> isTripFromYear(row, currentYear))
                             .toList();
 
@@ -929,9 +929,9 @@ public class EcoMoveService {
 
                     return new Employee(
                             0,
-                            user.nombre() + " " + user.apellidos(),
-                            getInitials(user.nombre() + " " + user.apellidos()),
-                            user.puebloCiudad(),
+                            user.getNombre() + " " + user.getApellidos(),
+                            getInitials(user.getNombre() + " " + user.getApellidos()),
+                            user.getPuebloCiudad(),
                             tripCount,
                             formatKg(userCo2),
                             userPoints);
@@ -956,7 +956,7 @@ public class EcoMoveService {
 
         Map<String, Long> byCity = companyUsers.stream()
                 .collect(Collectors.groupingBy(
-                        User::puebloCiudad,
+                        Usuario::getPuebloCiudad,
                         LinkedHashMap::new,
                         Collectors.counting()));
 
@@ -988,34 +988,34 @@ public class EcoMoveService {
         return csv.getDataDir().toString();
     }
 
-    private UserProfile buildProfile(User user) {
-        String organization = userCsvService.findCompany(user.empresaID()).map(Empresa::nombre).orElse("EcoMove");
-        List<Map<String, String>> trips = userTripRows(user.userID());
+    private UserProfile buildProfile(Usuario user) {
+        String organization = userCsvService.findCompany(user.getEmpresaID()).map(Empresa::nombre).orElse("EcoMove");
+        List<Map<String, String>> trips = userTripRows(user.getUserID());
         int totalPoints = trips.stream().mapToInt(row -> parseInt(row.get("puntos"))).sum()
-                - redeemedPoints(user.userID());
+                - redeemedPoints(user.getUserID());
         double co2 = trips.stream().mapToDouble(row -> parseDouble(row.get("co2"))).sum();
         int level = Math.max(1, 1 + totalPoints / 250);
 
         return new UserProfile(
-                user.userID(),
-                user.nombre() + " " + user.apellidos(),
-                getInitials(user.nombre() + " " + user.apellidos()),
-                user.email(),
+                user.getUserID(),
+                user.getNombre() + " " + user.getApellidos(),
+                getInitials(user.getNombre() + " " + user.getApellidos()),
+                user.getEmail(),
                 organization,
-                user.puebloCiudad(),
+                user.getPuebloCiudad(),
                 level,
                 totalPoints,
                 trips.size(),
                 formatKg(co2),
                 badgeForPoints(totalPoints),
-                user.empresaID(),
-                user.nombreUsuario(),
-                user.tieneCoche(),
-                user.modeloCocheID(),
-                user.puebloCiudad());
+                user.getEmpresaID(),
+                user.getNombreUsuario(),
+                user.isTieneCoche(),
+                user.getModeloCocheID(),
+                user.getPuebloCiudad());
     }
 
-    private User getUser(long userId) {
+    private Usuario getUser(long userId) {
         return userCsvService.findById(userId)
                 .orElseGet(() -> userCsvService.getAllUsers().stream().findFirst()
                         .orElseThrow(() -> new IllegalStateException("No hay usuarios en data/usuarios.csv")));
@@ -1313,7 +1313,7 @@ public class EcoMoveService {
     }
 
     public UserProfile updateProfile(ProfileUpdateRequest request) {
-        User updatedUser = userCsvService.updateProfile(request);
+        Usuario updatedUser = userCsvService.updateProfile(request);
         return buildProfile(updatedUser);
     }
 
