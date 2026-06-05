@@ -27,8 +27,8 @@ import java.util.concurrent.atomic.DoubleAdder;
 
 /**
  * ResultWorkerCO2 cumple dos funciones en la Arquitectura 2:
- * 1) recibe los resultados calculados por WorkerCO2 y los reenvia a Lainoa2.
- * 2) actua como servidor RPC de consultas SYCD para la web.
+ *  1) recibe los resultados calculados por WorkerCO2 y los reenvia a Lainoa2.
+ *  2) actua como servidor RPC de consultas SYCD para la web.
  *
  * Las consultas RPC usan RabbitMQ/TLS, correlationId y replyTo.
  */
@@ -74,10 +74,8 @@ public class ResultWorkerCO2 {
             channel.queueDeclare(QUEUE_CO2_CONSULTAS, true, false, false, null);
             channel.basicConsume(QUEUE_CO2_CONSULTAS, false, new ServerRPCCO2Consumer(channel));
 
-            System.out.println("[ResultWorkerCO2] Esperando resultados y consultas RPC en Q:" + QUEUE_CO2_CONSULTAS
-                    + " [TLS activo]");
-            System.out.println(
-                    "[ResultWorkerCO2] Consultas disponibles: STATUS, METRICS, USER <id>, EMPRESA <id>, EMPRESA_USER <empresaId>:<userId>");
+            System.out.println("[ResultWorkerCO2] Esperando resultados y consultas RPC en Q:" + QUEUE_CO2_CONSULTAS + " [TLS activo]");
+            System.out.println("[ResultWorkerCO2] Consultas disponibles: STATUS, METRICS, USER <id>, EMPRESA <id>, EMPRESA_USER <empresaId>:<userId>");
             System.out.println("------------------------------------------------------");
 
             Thread.currentThread().join();
@@ -98,9 +96,7 @@ public class ResultWorkerCO2 {
     }
 
     public class MiConsumer extends DefaultConsumer {
-        public MiConsumer(Channel channel) {
-            super(channel);
-        }
+        public MiConsumer(Channel channel) { super(channel); }
 
         @Override
         public void handleDelivery(String consumerTag, Envelope envelope,
@@ -142,9 +138,7 @@ public class ResultWorkerCO2 {
     }
 
     public class ServerRPCCO2Consumer extends DefaultConsumer {
-        public ServerRPCCO2Consumer(Channel channel) {
-            super(channel);
-        }
+        public ServerRPCCO2Consumer(Channel channel) { super(channel); }
 
         @Override
         public void handleDelivery(String consumerTag, Envelope envelope,
@@ -177,8 +171,7 @@ public class ResultWorkerCO2 {
 
     private String procesarConsulta(String peticion) throws Exception {
         if (peticion == null || peticion.isBlank()) {
-            return jsonError(
-                    "Consulta vacia. Usa STATUS, METRICS, USER <id>, EMPRESA <id> o EMPRESA_USER <empresaId>:<userId>.");
+            return jsonError("Consulta vacia. Usa STATUS, METRICS, USER <id>, EMPRESA <id> o EMPRESA_USER <empresaId>:<userId>.");
         }
 
         String[] partes = peticion.trim().split("\\s+", 2);
@@ -235,7 +228,8 @@ public class ResultWorkerCO2 {
                 + kv("dbCo2ConsumidoKg", totals.consumed) + ","
                 + kv("dbCo2AhorradoKg", totals.saved) + ","
                 + kv("dbPuntos", totals.points) + ","
-                + kv("dbCarpoolTrips", totals.carpoolTrips)
+                + kv("dbCarpoolTrips", totals.carpoolTrips) + ","
+                + kv("dbAuditRows", dbConfigured() ? auditRowsCount() : 0)
                 + "}";
     }
 
@@ -343,8 +337,7 @@ public class ResultWorkerCO2 {
 
     private String empresaJsonFromMemory(int empresaId) {
         EstadisticasEmpresa emp = estadisticas.get(empresaId);
-        if (emp == null || emp.usuarios.isEmpty())
-            return jsonError("La empresa " + empresaId + " no tiene datos en memoria.");
+        if (emp == null || emp.usuarios.isEmpty()) return jsonError("La empresa " + empresaId + " no tiene datos en memoria.");
         double media = emp.co2Total.sum() / Math.max(1, emp.usuarios.size());
         return "{"
                 + kv("ok", true) + ","
@@ -360,17 +353,15 @@ public class ResultWorkerCO2 {
 
     private String buscarUsuarioEnEmpresaMemory(int empresaId, int userId) {
         EstadisticasEmpresa emp = estadisticas.get(empresaId);
-        if (emp == null)
-            return jsonError("La empresa " + empresaId + " no existe en memoria.");
+        if (emp == null) return jsonError("La empresa " + empresaId + " no existe en memoria.");
         DatosUsuario u = emp.usuarios.get(userId);
-        if (u == null)
-            return jsonError("El usuario " + userId + " no esta en la empresa " + empresaId + ".");
+        if (u == null) return jsonError("El usuario " + userId + " no esta en la empresa " + empresaId + ".");
         return userJsonFromMemory(userId);
     }
 
     private void enviarALainoa2(String mensaje) {
         try (com.rabbitmq.client.Connection conn = factory.newConnection();
-                Channel ch = conn.createChannel()) {
+             Channel ch = conn.createChannel()) {
             ch.exchangeDeclare(CO2StreamConfig.EXCHANGE_LAINOA2, "fanout", true);
             ch.basicPublish(CO2StreamConfig.EXCHANGE_LAINOA2, "", null, mensaje.getBytes(StandardCharsets.UTF_8));
         } catch (Exception e) {
@@ -419,8 +410,7 @@ public class ResultWorkerCO2 {
                 if (rs.next()) {
                     String name = (rs.getString("nombre") == null ? "" : rs.getString("nombre")) + " "
                             + (rs.getString("apellidos") == null ? "" : rs.getString("apellidos"));
-                    return new UserInfo(rs.getLong("userid"), rs.getLong("empresaid"), name.trim(),
-                            rs.getString("nombre_usuario"));
+                    return new UserInfo(rs.getLong("userid"), rs.getLong("empresaid"), name.trim(), rs.getString("nombre_usuario"));
                 }
             }
         }
@@ -428,12 +418,10 @@ public class ResultWorkerCO2 {
     }
 
     private String findCompanyName(Connection cn, long empresaId) throws SQLException {
-        try (PreparedStatement ps = cn.prepareStatement(
-                "SELECT `nombre` FROM empresas_ecomove WHERE CAST(NULLIF(`empresaID`, '') AS UNSIGNED) = ? LIMIT 1")) {
+        try (PreparedStatement ps = cn.prepareStatement("SELECT `nombre` FROM empresas_ecomove WHERE CAST(NULLIF(`empresaID`, '') AS UNSIGNED) = ? LIMIT 1")) {
             ps.setLong(1, empresaId);
             try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next())
-                    return rs.getString(1) == null ? "" : rs.getString(1);
+                if (rs.next()) return rs.getString(1) == null ? "" : rs.getString(1);
             }
         } catch (SQLException ignored) {
             // La tabla puede no existir en proyectos parcialmente migrados.
@@ -488,8 +476,7 @@ public class ResultWorkerCO2 {
 
     private TripTotals readTripTotals(ResultSet rs) throws SQLException {
         if (rs.next()) {
-            return new TripTotals(rs.getLong(1), rs.getDouble(2), rs.getDouble(3), rs.getDouble(4), rs.getLong(5),
-                    rs.getLong(6));
+            return new TripTotals(rs.getLong(1), rs.getDouble(2), rs.getDouble(3), rs.getDouble(4), rs.getLong(5), rs.getLong(6));
         }
         return new TripTotals(0, 0, 0, 0, 0, 0);
     }
@@ -524,8 +511,7 @@ public class ResultWorkerCO2 {
         StringBuilder out = new StringBuilder("[");
         boolean first = true;
         while (rs.next()) {
-            if (!first)
-                out.append(',');
+            if (!first) out.append(',');
             first = false;
             out.append('{')
                     .append(kv("mode", rs.getString(1))).append(',')
@@ -540,8 +526,7 @@ public class ResultWorkerCO2 {
 
     private String latestTripsJson(Connection cn, String where, long param, int limit) throws SQLException {
         String sql = "SELECT `tripID`, `sessionID`, `modo`, `km`, `co2ConsumidoKg`, `co2AhorradoKg`, `puntos`, `fecha`, `esCarpool`, `rolCarpool` "
-                + "FROM viajes_ecomove " + where
-                + " ORDER BY CAST(COALESCE(NULLIF(`tripID`, ''), '0') AS UNSIGNED) DESC LIMIT ?";
+                + "FROM viajes_ecomove " + where + " ORDER BY CAST(COALESCE(NULLIF(`tripID`, ''), '0') AS UNSIGNED) DESC LIMIT ?";
         try (PreparedStatement ps = cn.prepareStatement(sql)) {
             ps.setLong(1, param);
             ps.setInt(2, limit);
@@ -549,8 +534,7 @@ public class ResultWorkerCO2 {
                 StringBuilder out = new StringBuilder("[");
                 boolean first = true;
                 while (rs.next()) {
-                    if (!first)
-                        out.append(',');
+                    if (!first) out.append(',');
                     first = false;
                     out.append('{')
                             .append(kv("tripId", rs.getString(1))).append(',')
@@ -571,13 +555,24 @@ public class ResultWorkerCO2 {
         }
     }
 
+    private long auditRowsCount() {
+        if (!dbConfigured()) {
+            return 0;
+        }
+        try (Connection cn = connection();
+             Statement st = cn.createStatement();
+             ResultSet rs = st.executeQuery("SELECT COUNT(*) FROM co2_auditoria_ecomove")) {
+            return rs.next() ? rs.getLong(1) : 0;
+        } catch (SQLException ignored) {
+            return 0;
+        }
+    }
+
     private DbTotals queryDbTotals() throws SQLException {
         try (Connection cn = connection()) {
             long users = 0;
-            try (Statement st = cn.createStatement();
-                    ResultSet rs = st.executeQuery("SELECT COUNT(*) FROM usuarios_ecomove")) {
-                if (rs.next())
-                    users = rs.getLong(1);
+            try (Statement st = cn.createStatement(); ResultSet rs = st.executeQuery("SELECT COUNT(*) FROM usuarios_ecomove")) {
+                if (rs.next()) users = rs.getLong(1);
             }
             TripTotals t = tripTotals(cn, "", 0);
             return new DbTotals(users, t.trips, t.km, t.consumed, t.saved, t.points, t.carpoolTrips);
@@ -585,13 +580,9 @@ public class ResultWorkerCO2 {
     }
 
     private static double num(String value) {
-        if (value == null || value.isBlank())
-            return 0.0;
-        try {
-            return Double.parseDouble(value.replace(',', '.'));
-        } catch (Exception ignored) {
-            return 0.0;
-        }
+        if (value == null || value.isBlank()) return 0.0;
+        try { return Double.parseDouble(value.replace(',', '.')); }
+        catch (Exception ignored) { return 0.0; }
     }
 
     private static String jsonError(String message) {
@@ -637,8 +628,8 @@ public class ResultWorkerCO2 {
         final String lat, lon, timestamp;
 
         DatosUsuario(int userId, String mota, double distanciaKm,
-                double co2Gramos, double co2Ahorrado,
-                String lat, String lon, String timestamp) {
+                     double co2Gramos, double co2Ahorrado,
+                     String lat, String lon, String timestamp) {
             this.userId = userId;
             this.mota = mota;
             this.distanciaKm = distanciaKm;
@@ -656,9 +647,7 @@ public class ResultWorkerCO2 {
         final DoubleAdder co2Total = new DoubleAdder();
         final DoubleAdder co2AhorradoTotal = new DoubleAdder();
 
-        EstadisticasEmpresa(int empresaId) {
-            this.empresaId = empresaId;
-        }
+        EstadisticasEmpresa(int empresaId) { this.empresaId = empresaId; }
 
         synchronized void agregarUsuario(int userId, String mota, double distKm,
                 double co2g, double ahorradoG, String lat, String lon, String timestamp) {
@@ -673,15 +662,9 @@ public class ResultWorkerCO2 {
         }
     }
 
-    private record UserInfo(long userId, long empresaId, String name, String username) {
-    }
-
-    private record TripTotals(long trips, double km, double consumed, double saved, long points, long carpoolTrips) {
-    }
-
-    private record DbTotals(long users, long trips, double km, double consumed, double saved, long points,
-            long carpoolTrips) {
-    }
+    private record UserInfo(long userId, long empresaId, String name, String username) {}
+    private record TripTotals(long trips, double km, double consumed, double saved, long points, long carpoolTrips) {}
+    private record DbTotals(long users, long trips, double km, double consumed, double saved, long points, long carpoolTrips) {}
 
     public static void main(String[] args) {
         try {
