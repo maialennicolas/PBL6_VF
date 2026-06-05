@@ -2,6 +2,7 @@ package com.ecomove.controller;
 
 import com.ecomove.model.*;
 import com.ecomove.service.EcoMoveService;
+import com.ecomove.service.SycdQueryClient;
 import jakarta.validation.Valid;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
@@ -14,9 +15,11 @@ import java.util.Map;
 public class EcoMoveController {
 
     private final EcoMoveService service;
+    private final SycdQueryClient sycdQueryClient;
 
-    public EcoMoveController(EcoMoveService service) {
+    public EcoMoveController(EcoMoveService service, SycdQueryClient sycdQueryClient) {
         this.service = service;
+        this.sycdQueryClient = sycdQueryClient;
     }
 
     @PostMapping("/auth/login")
@@ -118,25 +121,64 @@ public class EcoMoveController {
             @RequestParam long userId,
             @RequestParam String sessionId,
             @RequestParam(required = false, defaultValue = "0") long durationSeconds,
-            @RequestParam(required = false) String endTimestamp) {
-        return service.stopTracking(userId, sessionId, durationSeconds, endTimestamp);
+            @RequestParam(required = false) String endTimestamp,
+            @RequestParam(required = false, defaultValue = "0") long carpoolId,
+            @RequestParam(required = false, defaultValue = "NONE") String rolCarpool) {
+        return service.stopTracking(userId, sessionId, durationSeconds, endTimestamp, carpoolId, rolCarpool);
     }
 
     @PostMapping("/carpool/offers")
     public Map<String, Object> offerTrip(@RequestParam long userId, @RequestBody CarpoolOfferRequest request) {
-        service.offerTrip(userId, request);
-        return Map.of("ok", true, "message", "Bidaia data/carpool_ofertas.csv fitxategian gorde da");
+        long offerId = service.offerTrip(userId, request);
+        return Map.of(
+                "ok", true,
+                "offerId", offerId,
+                "message", "Bidaia data/carpool_ofertas.csv fitxategian gorde da");
     }
 
     @PostMapping("/carpool/join")
-    public Map<String, Object> joinRide(@RequestParam long userId, @RequestParam String riderName) {
-        service.joinRide(userId, riderName);
+    public Map<String, Object> joinRide(
+            @RequestParam long userId,
+            @RequestParam(required = false, defaultValue = "0") long offerId,
+            @RequestParam(required = false, defaultValue = "") String riderName) {
+        service.joinRide(userId, offerId, riderName);
         return Map.of("ok", true, "message", "Bidaia elkartzea data/carpool_uniones.csv fitxategian gorde da");
+    }
+
+    @GetMapping("/carpool/my")
+    public List<Map<String, Object>> myCarpools(@RequestParam long userId) {
+        return service.getMyCarpools(userId);
     }
 
     @GetMapping("/corporate")
     public CorporateDashboard corporate(@RequestParam long userId) {
         return service.getCorporateDashboard(userId);
+    }
+
+    // Servidor de consultas SYCD: la web ofrece REST, pero responde usando RabbitMQ RPC contra Arquitectura 2.
+    @GetMapping("/sycd/status")
+    public Map<String, Object> sycdStatus() {
+        return sycdQueryClient.status();
+    }
+
+    @GetMapping("/sycd/metrics")
+    public Map<String, Object> sycdMetrics() {
+        return sycdQueryClient.metrics();
+    }
+
+    @GetMapping("/sycd/co2/user/{userId}")
+    public Map<String, Object> sycdUserCo2(@PathVariable long userId) {
+        return sycdQueryClient.userCo2(userId);
+    }
+
+    @GetMapping("/sycd/co2/company/{empresaId}")
+    public Map<String, Object> sycdCompanyCo2(@PathVariable long empresaId) {
+        return sycdQueryClient.companyCo2(empresaId);
+    }
+
+    @GetMapping("/sycd/co2/company/{empresaId}/user/{userId}")
+    public Map<String, Object> sycdCompanyUserCo2(@PathVariable long empresaId, @PathVariable long userId) {
+        return sycdQueryClient.companyUserCo2(empresaId, userId);
     }
 
     @GetMapping("/csv/info")
