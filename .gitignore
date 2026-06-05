@@ -2,5 +2,16 @@
 **/.idea/
 **/.vscode/
 .DS_Store
+
 matomo_db/
 matomo_app/
+
+.env
+password.env
+.env.*
+
+*.sql
+*.log
+*.swp
+
+target/
