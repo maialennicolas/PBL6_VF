@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -51,19 +50,10 @@ public class TaskWorker {
         try (Connection connection = factory.newConnection()) {
             channel = connection.createChannel();
 
-            // DLX y DLQ (Fidagarritasun azpiegitura)
-            channel.exchangeDeclare(KafkaStreamConfig.EXCHANGE_DLX, "direct", true);
-            channel.queueDeclare(KafkaStreamConfig.QUEUE_DLQ, true, false, false, null);
-            channel.queueBind(KafkaStreamConfig.QUEUE_DLQ, KafkaStreamConfig.EXCHANGE_DLX, KafkaStreamConfig.QUEUE_DLQ);
-
             channel.exchangeDeclare(KafkaStreamConfig.EXCHANGE_STREAM, "direct", true);
             channel.exchangeDeclare(KafkaStreamConfig.EXCHANGE_FANOUT, "fanout", true);
 
-            // Tarea ilara DLX-rekin lotuta
-            Map<String, Object> argsTarea = new HashMap<>();
-            argsTarea.put("x-dead-letter-exchange", KafkaStreamConfig.EXCHANGE_DLX);
-            argsTarea.put("x-dead-letter-routing-key", KafkaStreamConfig.QUEUE_DLQ);
-            channel.queueDeclare(KafkaStreamConfig.QUEUE_TAREA, true, false, false, argsTarea);
+            KafkaStreamConfig.declareQueueWithDlx(channel, KafkaStreamConfig.QUEUE_TAREA, KafkaStreamConfig.QUEUE_DLQ);
             channel.queueBind(KafkaStreamConfig.QUEUE_TAREA, KafkaStreamConfig.EXCHANGE_STREAM, KafkaStreamConfig.QUEUE_TAREA);
 
             channel.basicQos(1);
@@ -219,7 +209,7 @@ public class TaskWorker {
                 "\n* Fecha llegada: " + fecha +
                 "\n>>>>>>>>>>>>>>>>>>>>>>>");
 
-        channel.basicPublish(KafkaStreamConfig.EXCHANGE_FANOUT, "", null, linea.getBytes());
+        channel.basicPublish(KafkaStreamConfig.EXCHANGE_FANOUT, "", KafkaStreamConfig.persistentTextProperties(), linea.getBytes("UTF-8"));
     }
 
     private long parseTimestamp(String value) {

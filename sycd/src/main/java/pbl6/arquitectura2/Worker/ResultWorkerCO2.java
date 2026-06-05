@@ -63,7 +63,7 @@ public class ResultWorkerCO2 {
             channel.exchangeDeclare(CO2StreamConfig.EXCHANGE_CO2_RESULTADO, "direct", true);
             channel.exchangeDeclare(CO2StreamConfig.EXCHANGE_LAINOA2, "fanout", true);
 
-            channel.queueDeclare(CO2StreamConfig.QUEUE_CO2_RESULTADO, true, false, false, null);
+            CO2StreamConfig.declareQueueWithDlx(channel, CO2StreamConfig.QUEUE_CO2_RESULTADO, CO2StreamConfig.QUEUE_DLQ_CO2_RESULTADO);
             channel.queueBind(CO2StreamConfig.QUEUE_CO2_RESULTADO,
                     CO2StreamConfig.EXCHANGE_CO2_RESULTADO,
                     CO2StreamConfig.QUEUE_CO2_RESULTADO);
@@ -71,7 +71,7 @@ public class ResultWorkerCO2 {
             channel.basicQos(8);
             channel.basicConsume(CO2StreamConfig.QUEUE_CO2_RESULTADO, false, new MiConsumer(channel));
 
-            channel.queueDeclare(QUEUE_CO2_CONSULTAS, true, false, false, null);
+            CO2StreamConfig.declareQueueWithDlx(channel, QUEUE_CO2_CONSULTAS, CO2StreamConfig.QUEUE_DLQ_CO2_CONSULTAS);
             channel.basicConsume(QUEUE_CO2_CONSULTAS, false, new ServerRPCCO2Consumer(channel));
 
             System.out.println("[ResultWorkerCO2] Esperando resultados y consultas RPC en Q:" + QUEUE_CO2_CONSULTAS + " [TLS activo]");
@@ -359,13 +359,15 @@ public class ResultWorkerCO2 {
         return userJsonFromMemory(userId);
     }
 
-    private void enviarALainoa2(String mensaje) {
+    private void enviarALainoa2(String mensaje) throws Exception {
         try (com.rabbitmq.client.Connection conn = factory.newConnection();
              Channel ch = conn.createChannel()) {
             ch.exchangeDeclare(CO2StreamConfig.EXCHANGE_LAINOA2, "fanout", true);
-            ch.basicPublish(CO2StreamConfig.EXCHANGE_LAINOA2, "", null, mensaje.getBytes(StandardCharsets.UTF_8));
-        } catch (Exception e) {
-            e.printStackTrace();
+            CO2StreamConfig.declareQueueWithDlx(ch,
+                    CO2StreamConfig.QUEUE_LAINOA2_AUDITORIA,
+                    CO2StreamConfig.QUEUE_DLQ_LAINOA2);
+            ch.queueBind(CO2StreamConfig.QUEUE_LAINOA2_AUDITORIA, CO2StreamConfig.EXCHANGE_LAINOA2, "");
+            ch.basicPublish(CO2StreamConfig.EXCHANGE_LAINOA2, "", CO2StreamConfig.persistentTextProperties(), mensaje.getBytes(StandardCharsets.UTF_8));
         }
     }
 

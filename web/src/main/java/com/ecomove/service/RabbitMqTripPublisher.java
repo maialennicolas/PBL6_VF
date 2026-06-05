@@ -88,7 +88,7 @@ public class RabbitMqTripPublisher {
             channel.basicPublish(
                     EXCHANGE_STREAM,
                     QUEUE_TAREA,
-                    null,
+                    persistentTextProperties(),
                     message.getBytes(StandardCharsets.UTF_8));
 
             System.out.println("[WEB->SYCD] Evento enviado: " + message);
@@ -131,6 +131,13 @@ public class RabbitMqTripPublisher {
         }
     }
 
+
+    private com.rabbitmq.client.AMQP.BasicProperties persistentTextProperties() {
+        return new com.rabbitmq.client.AMQP.BasicProperties.Builder()
+                .deliveryMode(2)
+                .contentType("text/plain")
+                .build();
+    }
 
     private SSLContext createSslContext() throws Exception {
         String truststorePath = env("RABBITMQ_TRUSTSTORE", "/app/tls/truststore.jks");

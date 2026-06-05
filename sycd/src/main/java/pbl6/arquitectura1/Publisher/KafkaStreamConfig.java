@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeoutException;
 
+import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
@@ -22,7 +23,12 @@ public class KafkaStreamConfig {
     public static final String QUEUE_PUBLIKO = "publikoa";
     public static final String QUEUE_KP      = "k_p";
     public static final String QUEUE_EMAITZA = "emaitza";
-    public static final String QUEUE_DLQ     = "dlq_tarea";
+
+    public static final String QUEUE_DLQ          = "dlq_tarea";
+    public static final String QUEUE_DLQ_KOTXEA   = "dlq_kotxea";
+    public static final String QUEUE_DLQ_PUBLIKO  = "dlq_publikoa";
+    public static final String QUEUE_DLQ_KP       = "dlq_k_p";
+    public static final String QUEUE_DLQ_EMAITZA  = "dlq_emaitza";
 
     private ConnectionFactory factory;
 
@@ -38,46 +44,63 @@ public class KafkaStreamConfig {
         try (Connection connection = factory.newConnection();
              Channel channel = connection.createChannel()) {
 
-            // 1. Dead Letter Exchange + cola DLQ
+            // 1. Dead Letter Exchange + DLQ colas de arquitectura 1.
+            // Todas las colas críticas tienen DLX para que un basicNack(..., requeue=false)
+            // no pierda mensajes y se puedan auditar/reprocesar errores.
             channel.exchangeDeclare(EXCHANGE_DLX, "direct", true);
-            channel.queueDeclare(QUEUE_DLQ, true, false, false, null);
-            channel.queueBind(QUEUE_DLQ, EXCHANGE_DLX, QUEUE_DLQ);
-            System.out.println("[Config] DLX → dlq_tarea OK");
 
-            // 2. STREAM (direct) → Q:tarea con DLX configurado
             channel.exchangeDeclare(EXCHANGE_STREAM, "direct", true);
-            Map<String, Object> argsTarea = new HashMap<>();
-            argsTarea.put("x-dead-letter-exchange", EXCHANGE_DLX);
-            argsTarea.put("x-dead-letter-routing-key", QUEUE_DLQ);
-            channel.queueDeclare(QUEUE_TAREA, true, false, false, argsTarea);
+            declareQueueWithDlx(channel, QUEUE_TAREA, QUEUE_DLQ);
             channel.queueBind(QUEUE_TAREA, EXCHANGE_STREAM, QUEUE_TAREA);
-            System.out.println("[Config] STREAM → tarea (con DLX) OK");
+            System.out.println("[Config] STREAM -> tarea (DLX/DLQ) OK");
 
-            // 3. FANOUT → kotxea / publikoa / k_p
             channel.exchangeDeclare(EXCHANGE_FANOUT, "fanout", true);
-            channel.queueDeclare(QUEUE_KOTXEA,  true, false, false, null);
-            channel.queueDeclare(QUEUE_PUBLIKO, true, false, false, null);
-            channel.queueDeclare(QUEUE_KP,      true, false, false, null);
+            declareQueueWithDlx(channel, QUEUE_KOTXEA, QUEUE_DLQ_KOTXEA);
+            declareQueueWithDlx(channel, QUEUE_PUBLIKO, QUEUE_DLQ_PUBLIKO);
+            declareQueueWithDlx(channel, QUEUE_KP, QUEUE_DLQ_KP);
             channel.queueBind(QUEUE_KOTXEA,  EXCHANGE_FANOUT, "");
             channel.queueBind(QUEUE_PUBLIKO, EXCHANGE_FANOUT, "");
             channel.queueBind(QUEUE_KP,      EXCHANGE_FANOUT, "");
-            System.out.println("[Config] FANOUT → kotxea/publikoa/k_p OK");
+            System.out.println("[Config] FANOUT -> kotxea/publikoa/k_p (DLX/DLQ) OK");
 
-            // 4. EMAITZA (direct) → Q:emaitza
             channel.exchangeDeclare(EXCHANGE_EMAITZA, "direct", true);
-            channel.queueDeclare(QUEUE_EMAITZA, true, false, false, null);
+            declareQueueWithDlx(channel, QUEUE_EMAITZA, QUEUE_DLQ_EMAITZA);
             channel.queueBind(QUEUE_EMAITZA, EXCHANGE_EMAITZA, QUEUE_EMAITZA);
-            System.out.println("[Config] EMAITZA → emaitza OK");
+            System.out.println("[Config] EMAITZA -> emaitza (DLX/DLQ) OK");
 
-            // 5. LAINOA (fanout)
             channel.exchangeDeclare(EXCHANGE_LAINOA, "fanout", true);
             System.out.println("[Config] LAINOA (fanout) OK");
 
-            System.out.println("[Config] ✔ Configuración completada con DLX y TLS.");
+            System.out.println("[Config] Configuracion completada con TLS, ACK manual y DLX/DLQ.");
 
         } catch (IOException | TimeoutException e) {
             e.printStackTrace();
         }
+    }
+
+    public static void declareQueueWithDlx(Channel channel, String queueName, String dlqName) throws IOException {
+        declareDlq(channel, dlqName);
+        channel.queueDeclare(queueName, true, false, false, dlxArgs(dlqName));
+    }
+
+    public static void declareDlq(Channel channel, String dlqName) throws IOException {
+        channel.exchangeDeclare(EXCHANGE_DLX, "direct", true);
+        channel.queueDeclare(dlqName, true, false, false, null);
+        channel.queueBind(dlqName, EXCHANGE_DLX, dlqName);
+    }
+
+    public static Map<String, Object> dlxArgs(String dlqRoutingKey) {
+        Map<String, Object> args = new HashMap<>();
+        args.put("x-dead-letter-exchange", EXCHANGE_DLX);
+        args.put("x-dead-letter-routing-key", dlqRoutingKey);
+        return args;
+    }
+
+    public static AMQP.BasicProperties persistentTextProperties() {
+        return new AMQP.BasicProperties.Builder()
+                .deliveryMode(2)
+                .contentType("text/plain")
+                .build();
     }
 
     public static void main(String[] args) {

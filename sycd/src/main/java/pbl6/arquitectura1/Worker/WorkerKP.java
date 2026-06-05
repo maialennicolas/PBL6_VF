@@ -38,10 +38,10 @@ public class WorkerKP {
             channel.exchangeDeclare(KafkaStreamConfig.EXCHANGE_FANOUT, "fanout", true);
             channel.exchangeDeclare(KafkaStreamConfig.EXCHANGE_EMAITZA, "direct", true);
 
-            channel.queueDeclare(KafkaStreamConfig.QUEUE_KP, true, false, false, null);
+            KafkaStreamConfig.declareQueueWithDlx(channel, KafkaStreamConfig.QUEUE_KP, KafkaStreamConfig.QUEUE_DLQ_KP);
             channel.queueBind(KafkaStreamConfig.QUEUE_KP, KafkaStreamConfig.EXCHANGE_FANOUT, "");
 
-            channel.queueDeclare(KafkaStreamConfig.QUEUE_EMAITZA, true, false, false, null);
+            KafkaStreamConfig.declareQueueWithDlx(channel, KafkaStreamConfig.QUEUE_EMAITZA, KafkaStreamConfig.QUEUE_DLQ_EMAITZA);
             channel.queueBind(KafkaStreamConfig.QUEUE_EMAITZA, KafkaStreamConfig.EXCHANGE_EMAITZA, KafkaStreamConfig.QUEUE_EMAITZA);
 
             channel.basicQos(4);
@@ -109,7 +109,7 @@ public class WorkerKP {
             String resultado = resumen.resultado(clasificacion);
             synchronized (factory) {
                 try (Connection conn = factory.newConnection(); Channel ch = conn.createChannel()) {
-                    ch.basicPublish(KafkaStreamConfig.EXCHANGE_EMAITZA, KafkaStreamConfig.QUEUE_EMAITZA, null, resultado.getBytes());
+                    ch.basicPublish(KafkaStreamConfig.EXCHANGE_EMAITZA, KafkaStreamConfig.QUEUE_EMAITZA, KafkaStreamConfig.persistentTextProperties(), resultado.getBytes("UTF-8"));
                 }
             }
             String horaActual = new java.text.SimpleDateFormat("HH:mm:ss.SSS").format(new java.util.Date());

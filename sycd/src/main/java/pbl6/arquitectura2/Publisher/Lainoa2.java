@@ -46,14 +46,16 @@ public class Lainoa2 {
             Channel channel = connection.createChannel();
 
             channel.exchangeDeclare(CO2StreamConfig.EXCHANGE_LAINOA2, "fanout", true);
-            String cola = channel.queueDeclare().getQueue();
-            channel.queueBind(cola, CO2StreamConfig.EXCHANGE_LAINOA2, "");
+            CO2StreamConfig.declareQueueWithDlx(channel,
+                    CO2StreamConfig.QUEUE_LAINOA2_AUDITORIA,
+                    CO2StreamConfig.QUEUE_DLQ_LAINOA2);
+            channel.queueBind(CO2StreamConfig.QUEUE_LAINOA2_AUDITORIA, CO2StreamConfig.EXCHANGE_LAINOA2, "");
             channel.basicQos(8);
-            channel.basicConsume(cola, false, new MiConsumer(channel));
+            channel.basicConsume(CO2StreamConfig.QUEUE_LAINOA2_AUDITORIA, false, new MiConsumer(channel));
 
             System.out.println("======================================================");
             System.out.println("[Lainoa2] Capa cloud/auditoria iniciada [TLS activo]");
-            System.out.println("[Lainoa2] Esperando resultados CO2 en exchange: " + CO2StreamConfig.EXCHANGE_LAINOA2);
+            System.out.println("[Lainoa2] Esperando resultados CO2 en cola durable: " + CO2StreamConfig.QUEUE_LAINOA2_AUDITORIA);
             System.out.println("[Lainoa2] Auditoria BD: " + (dbConfigured() ? "activada" : "desactivada (DB_URL no configurado)"));
             System.out.println("======================================================");
 

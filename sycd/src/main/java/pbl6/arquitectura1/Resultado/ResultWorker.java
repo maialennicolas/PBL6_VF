@@ -53,12 +53,10 @@ public class ResultWorker {
                     "fanout",
                     true);
 
-            channel.queueDeclare(
+            KafkaStreamConfig.declareQueueWithDlx(
+                    channel,
                     KafkaStreamConfig.QUEUE_EMAITZA,
-                    true,
-                    false,
-                    false,
-                    null);
+                    KafkaStreamConfig.QUEUE_DLQ_EMAITZA);
 
             channel.queueBind(
                     KafkaStreamConfig.QUEUE_EMAITZA,
@@ -220,7 +218,7 @@ public class ResultWorker {
             ch.basicPublish(
                     CO2StreamConfig.EXCHANGE_CO2_FANOUT,
                     "",
-                    null,
+                    CO2StreamConfig.persistentTextProperties(),
                     mensaje.getBytes("UTF-8"));
             System.out.println("[ResultWorker→Arquitectura2] fanout_co2: " + mensaje);
         } catch (Exception e) {

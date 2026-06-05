@@ -47,7 +47,7 @@ public class PublisherCO2 {
             for (String msg : mensajes) {
                 channel.basicPublish(
                         CO2StreamConfig.EXCHANGE_CO2_FANOUT, "",
-                        null, msg.getBytes(StandardCharsets.UTF_8));
+                        CO2StreamConfig.persistentTextProperties(), msg.getBytes(StandardCharsets.UTF_8));
                 String[] p = msg.split(" ");
                 System.out.printf(Locale.US, "[PublisherCO2] → userId=%-4s %-10s dist=%.2f km  %s %s%n",
                         p[0], p[2], Double.parseDouble(p[3].replace(',', '.')), p[4], p[5]);

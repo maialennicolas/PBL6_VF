@@ -29,6 +29,8 @@ import java.util.concurrent.TimeUnit;
 public class SycdQueryClient {
 
     private static final String REQUEST_QUEUE = "q.co2.consultas";
+    private static final String EXCHANGE_DLX_CO2 = "dlx_co2";
+    private static final String REQUEST_DLQ = "dlq_co2_consultas";
     private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(5);
 
     private final ConnectionFactory factory;
@@ -84,7 +86,7 @@ public class SycdQueryClient {
     public Map<String, Object> request(String message) {
         long start = System.nanoTime();
         try (Connection connection = factory.newConnection(); Channel channel = connection.createChannel()) {
-            channel.queueDeclare(REQUEST_QUEUE, true, false, false, null);
+            ensureRpcQueue(channel);
 
             String corrId = UUID.randomUUID().toString();
             String replyQueue = channel.queueDeclare("", false, true, true, null).getQueue();
@@ -101,7 +103,7 @@ public class SycdQueryClient {
                     .correlationId(corrId)
                     .replyTo(replyQueue)
                     .contentType("text/plain")
-                    .deliveryMode(1)
+                    .deliveryMode(2)
                     .build();
 
             channel.basicPublish("", REQUEST_QUEUE, props, message.getBytes(StandardCharsets.UTF_8));
@@ -119,6 +121,17 @@ public class SycdQueryClient {
         } catch (Exception e) {
             return error("No se ha podido consultar SYCD: " + e.getMessage(), start);
         }
+    }
+
+    private void ensureRpcQueue(Channel channel) throws Exception {
+        channel.exchangeDeclare(EXCHANGE_DLX_CO2, "direct", true);
+        channel.queueDeclare(REQUEST_DLQ, true, false, false, null);
+        channel.queueBind(REQUEST_DLQ, EXCHANGE_DLX_CO2, REQUEST_DLQ);
+
+        Map<String, Object> args = new HashMap<>();
+        args.put("x-dead-letter-exchange", EXCHANGE_DLX_CO2);
+        args.put("x-dead-letter-routing-key", REQUEST_DLQ);
+        channel.queueDeclare(REQUEST_QUEUE, true, false, false, args);
     }
 
     private Map<String, Object> error(String message, long start) {

@@ -3,6 +3,7 @@ package pbl6.arquitectura2.Client;
 import com.rabbitmq.client.*;
 
 import pbl6.arquitectura2.Config.TLSConfig;
+import pbl6.arquitectura2.Config.CO2StreamConfig;
 
 
 import java.util.Scanner;
@@ -11,7 +12,7 @@ import java.util.concurrent.CompletableFuture;
 
 public class ClientConsultaCO2 {
 
-    private static final String COLA_PETICIONES = "q.co2.consultas";
+    private static final String COLA_PETICIONES = CO2StreamConfig.QUEUE_CO2_CONSULTAS;
     private final Connection connection;
     private final Channel channel;
 
@@ -25,8 +26,14 @@ public class ClientConsultaCO2 {
         final String corrId = UUID.randomUUID().toString();
         String replyQueueName = channel.queueDeclare().getQueue();
 
+        CO2StreamConfig.declareQueueWithDlx(channel, CO2StreamConfig.QUEUE_CO2_CONSULTAS, CO2StreamConfig.QUEUE_DLQ_CO2_CONSULTAS);
+
         AMQP.BasicProperties props = new AMQP.BasicProperties.Builder()
-                .correlationId(corrId).replyTo(replyQueueName).build();
+                .correlationId(corrId)
+                .replyTo(replyQueueName)
+                .contentType("text/plain")
+                .deliveryMode(2)
+                .build();
 
         String mensaje = tipoConsulta + " " + idParam;
         channel.basicPublish("", COLA_PETICIONES, props, mensaje.getBytes("UTF-8"));
@@ -38,7 +45,7 @@ public class ClientConsultaCO2 {
             }
         }, consumerTag -> {});
 
-        String resultado = response.get();
+        String resultado = response.get(8, java.util.concurrent.TimeUnit.SECONDS);
         channel.basicCancel(ctag);
         return resultado;
     }

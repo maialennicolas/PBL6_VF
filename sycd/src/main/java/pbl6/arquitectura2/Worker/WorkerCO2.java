@@ -37,11 +37,11 @@ public class WorkerCO2 {
             channel.exchangeDeclare(CO2StreamConfig.EXCHANGE_CO2_FANOUT, "fanout", true);
             channel.exchangeDeclare(CO2StreamConfig.EXCHANGE_CO2_RESULTADO, "direct", true);
 
-            channel.queueDeclare(CO2StreamConfig.QUEUE_CO2, true, false, false, null);
+            CO2StreamConfig.declareQueueWithDlx(channel, CO2StreamConfig.QUEUE_CO2, CO2StreamConfig.QUEUE_DLQ_CO2);
             channel.queueBind(CO2StreamConfig.QUEUE_CO2,
                     CO2StreamConfig.EXCHANGE_CO2_FANOUT, "");
 
-            channel.queueDeclare(CO2StreamConfig.QUEUE_CO2_RESULTADO, true, false, false, null);
+            CO2StreamConfig.declareQueueWithDlx(channel, CO2StreamConfig.QUEUE_CO2_RESULTADO, CO2StreamConfig.QUEUE_DLQ_CO2_RESULTADO);
             channel.queueBind(CO2StreamConfig.QUEUE_CO2_RESULTADO,
                     CO2StreamConfig.EXCHANGE_CO2_RESULTADO,
                     CO2StreamConfig.QUEUE_CO2_RESULTADO);
@@ -104,7 +104,7 @@ public class WorkerCO2 {
             ch.basicPublish(
                     CO2StreamConfig.EXCHANGE_CO2_RESULTADO,
                     CO2StreamConfig.QUEUE_CO2_RESULTADO,
-                    null,
+                    CO2StreamConfig.persistentTextProperties(),
                     resultado.toLainoa2().getBytes(StandardCharsets.UTF_8));
         }
     }

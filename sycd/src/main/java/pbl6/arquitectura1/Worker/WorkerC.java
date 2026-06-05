@@ -41,10 +41,10 @@ public class WorkerC {
             channel.exchangeDeclare(KafkaStreamConfig.EXCHANGE_FANOUT, "fanout", true);
             channel.exchangeDeclare(KafkaStreamConfig.EXCHANGE_EMAITZA, "direct", true);
 
-            channel.queueDeclare(KafkaStreamConfig.QUEUE_KOTXEA, true, false, false, null);
+            KafkaStreamConfig.declareQueueWithDlx(channel, KafkaStreamConfig.QUEUE_KOTXEA, KafkaStreamConfig.QUEUE_DLQ_KOTXEA);
             channel.queueBind(KafkaStreamConfig.QUEUE_KOTXEA, KafkaStreamConfig.EXCHANGE_FANOUT, "");
 
-            channel.queueDeclare(KafkaStreamConfig.QUEUE_EMAITZA, true, false, false, null);
+            KafkaStreamConfig.declareQueueWithDlx(channel, KafkaStreamConfig.QUEUE_EMAITZA, KafkaStreamConfig.QUEUE_DLQ_EMAITZA);
             channel.queueBind(KafkaStreamConfig.QUEUE_EMAITZA, KafkaStreamConfig.EXCHANGE_EMAITZA, KafkaStreamConfig.QUEUE_EMAITZA);
 
             channel.basicQos(4);
@@ -97,7 +97,7 @@ public class WorkerC {
             String resultado = resumen.resultado("KOTXEA");
             synchronized (factory) {
                 try (Connection conn = factory.newConnection(); Channel ch = conn.createChannel()) {
-                    ch.basicPublish(KafkaStreamConfig.EXCHANGE_EMAITZA, KafkaStreamConfig.QUEUE_EMAITZA, null, resultado.getBytes());
+                    ch.basicPublish(KafkaStreamConfig.EXCHANGE_EMAITZA, KafkaStreamConfig.QUEUE_EMAITZA, KafkaStreamConfig.persistentTextProperties(), resultado.getBytes("UTF-8"));
                 }
             }
             String horaActual = new java.text.SimpleDateFormat("HH:mm:ss.SSS").format(new java.util.Date());
