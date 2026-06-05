@@ -563,6 +563,7 @@ function renderTrips(trips) {
                 ${trips.map(t => {
         const isPending = t.status !== 'CALCULADO' || t.mode === 'SIN_CALCULAR';
         const tripTypeIcon = t.tripTypeIcon || (t.carpool ? '👥' : '👤');
+<<<<<<< HEAD
         const tripTypeLabel = t.carpool ? 'Karpoola' : 'Bidaia normala';
         const passengers = Number(t.passengers || 1);
         const role = t.carpoolRole || 'NONE';
@@ -591,16 +592,47 @@ function renderTrips(trips) {
                                 ${t.carpool ? `👥 Karpoola #${escapeHtml(t.carpoolId || '-')}` : '👤 Bidaia normala'}
                             </small>
                         </div>
+=======
+        const roleText = t.carpool ? ` · ${escapeHtml(t.carpoolRole || 'CARPOOL')} · ${Number(t.passengers || 1)} pertsona` : ' · bidaia normala';
+
+        return `
+                            <tr>
+                                <td>
+                                    <strong>${tripTypeIcon} ${t.icon || '🧭'} ${escapeHtml(t.mode || 'SIN_CALCULAR')}</strong><br>
+                                    <small style="color:#6b7280;font-weight:800">
+                                        ⏱ ${escapeHtml(t.duration || '00:00:00')}${roleText}
+                                    </small>
+                                </td>
+
+                                <td>
+                                    <strong>${escapeHtml(t.from || 'Origen pendiente')}</strong>
+                                    →
+                                    <strong>${escapeHtml(t.to || 'Destino pendiente')}</strong>
+                                    <br>
+                                    ${t.carpool ? `<small style="color:#16a34a;font-weight:900">👥 Karpoola #${escapeHtml(t.carpoolId || '-')}</small>` : `<small style="color:#6b7280;font-weight:800">👤 Bidaia normala</small>`}
+                                </td>
+>>>>>>> cc5ed4dfae45db41af6469d1c5fade7ad98a6143
 
                         <div class="trip-cell trip-km">
                             <small class="trip-label">KM</small>
                             <strong>${escapeHtml(t.km || '0.0 km')}</strong>
                         </div>
 
+<<<<<<< HEAD
                         <div class="trip-cell trip-co2">
                             <span class="co2-pill">Aurreztua <strong>${escapeHtml(t.co2Saved || t.co2 || '0.0 kg')}</strong></span>
                             <small class="trip-muted">Emititua: ${escapeHtml(t.co2Consumed || '0.0 kg')}</small>
                         </div>
+=======
+                                <td>
+                                    <span class="badge">
+                                        Aurreztua: ${escapeHtml(t.co2Saved || t.co2 || '0.0 kg')}
+                                    </span><br>
+                                    <small style="color:#6b7280;font-weight:800">
+                                        Emititua: ${escapeHtml(t.co2Consumed || '0.0 kg')}
+                                    </small>
+                                </td>
+>>>>>>> cc5ed4dfae45db41af6469d1c5fade7ad98a6143
 
                         <div class="trip-cell trip-date">
                             <small class="trip-label">Data</small>

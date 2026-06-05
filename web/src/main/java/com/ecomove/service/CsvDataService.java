@@ -333,7 +333,11 @@ public class CsvDataService {
                 Files.writeString(path, toCsvLine(headers) + System.lineSeparator(), StandardCharsets.UTF_8);
             }
 
+<<<<<<< HEAD
             List<String> currentHeaders = readHeadersFromFile(filename);
+=======
+            List<String> currentHeaders = readHeaders(filename);
+>>>>>>> cc5ed4dfae45db41af6469d1c5fade7ad98a6143
             List<String> mergedHeaders = new ArrayList<>(currentHeaders);
             boolean changed = false;
 
@@ -345,8 +349,13 @@ public class CsvDataService {
             }
 
             if (changed) {
+<<<<<<< HEAD
                 List<Map<String, String>> rows = readRowsFromFile(filename);
                 writeRowsToFile(filename, mergedHeaders, rows);
+=======
+                List<Map<String, String>> rows = readRows(filename);
+                writeRows(filename, mergedHeaders, rows);
+>>>>>>> cc5ed4dfae45db41af6469d1c5fade7ad98a6143
                 currentHeaders = mergedHeaders;
             }
 
@@ -366,7 +375,11 @@ public class CsvDataService {
         }
     }
 
+<<<<<<< HEAD
     private List<String> readHeadersFromFile(String filename) {
+=======
+    public synchronized List<String> readHeaders(String filename) {
+>>>>>>> cc5ed4dfae45db41af6469d1c5fade7ad98a6143
         ensureDataDir();
         Path path = dataDir.resolve(filename);
 
@@ -383,6 +396,16 @@ public class CsvDataService {
         } catch (IOException e) {
             throw new IllegalStateException("No se ha podido leer la cabecera del CSV: " + filename, e);
         }
+<<<<<<< HEAD
+=======
+    }
+
+    public synchronized long nextId(String filename, String idColumn) {
+        return readRows(filename).stream()
+                .map(row -> parseLong(row.get(idColumn), 0))
+                .max(Long::compareTo)
+                .orElse(0L) + 1L;
+>>>>>>> cc5ed4dfae45db41af6469d1c5fade7ad98a6143
     }
 
     private void writeRowsToFile(String filename, List<String> headers, List<Map<String, String>> rows) {

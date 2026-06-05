@@ -64,7 +64,11 @@ public final class CsvTripResultUpdater {
         Path dataDir = CsvUtil.dataDir();
         try {
             List<String> headers = ensureHeaders(CsvUtil.readHeaders(dataDir, TRIPS_FILE));
+<<<<<<< HEAD
             if (headers.isEmpty()) return null;
+=======
+            if (headers.isEmpty()) return;
+>>>>>>> cc5ed4dfae45db41af6469d1c5fade7ad98a6143
 
             List<Map<String, String>> trips = new ArrayList<>(CsvUtil.readRows(dataDir, TRIPS_FILE));
 
@@ -117,10 +121,13 @@ public final class CsvTripResultUpdater {
                     emission.points,
                     isCarpool,
                     peopleInCarpool));
+<<<<<<< HEAD
             return new UpdateSummary(userId,
                     target.getOrDefault("sessionID", sessionId == null ? "" : sessionId),
                     sycdMode, webMode, km, emission.consumedKg, emission.savedKg, emission.points,
                     isCarpool, peopleInCarpool);
+=======
+>>>>>>> cc5ed4dfae45db41af6469d1c5fade7ad98a6143
         } catch (Exception e) {
             System.err.println("[CsvTripResultUpdater] Error actualizando CSV: " + e.getMessage());
             e.printStackTrace();
@@ -480,6 +487,248 @@ public final class CsvTripResultUpdater {
         return new CarInfo(modelId, DEFAULT_CAR_KG_KM, "Referencia", false);
     }
 
+    private static List<String> ensureHeaders(List<String> existingHeaders) {
+        if (existingHeaders == null || existingHeaders.isEmpty()) {
+            return List.of();
+        }
+
+        List<String> headers = new ArrayList<>(existingHeaders);
+        for (String header : EXTRA_TRIP_HEADERS) {
+            if (!headers.contains(header)) {
+                int index = preferredHeaderPosition(headers, header);
+                if (index >= 0 && index <= headers.size()) {
+                    headers.add(index, header);
+                } else {
+                    headers.add(header);
+                }
+            }
+        }
+        return headers;
+    }
+
+    private static int preferredHeaderPosition(List<String> headers, String header) {
+        if ("co2ConsumidoKg".equals(header)) return after(headers, "co2");
+        if ("co2AhorradoKg".equals(header)) return after(headers, "co2ConsumidoKg");
+        if ("tripTypeIcon".equals(header)) return after(headers, "icono");
+        return -1;
+    }
+
+    private static int after(List<String> headers, String existing) {
+        int index = headers.indexOf(existing);
+        return index >= 0 ? index + 1 : -1;
+    }
+
+    private static void applyTripResult(Map<String, String> target,
+                                        String webMode,
+                                        double km,
+                                        EmissionResult emission,
+                                        boolean isCarpool,
+                                        int peopleInCarpool,
+                                        String lat,
+                                        String lon,
+                                        String timestamp) {
+        target.put("km", formatOne(km));
+        target.put("co2", formatOne(emission.savedKg));
+        target.put("co2ConsumidoKg", formatOne(emission.consumedKg));
+        target.put("co2AhorradoKg", formatOne(emission.savedKg));
+        target.put("modo", webMode);
+        target.put("puntos", String.valueOf(emission.points));
+        target.put("icono", iconForMode(webMode));
+        target.put("tripTypeIcon", isCarpool ? "👥" : "👤");
+        target.put("esCarpool", String.valueOf(isCarpool));
+        target.put("numPasajeros", String.valueOf(Math.max(1, peopleInCarpool)));
+        target.put("estadoCalculo", "CALCULADO");
+
+        if (target.getOrDefault("rolCarpool", "").isBlank()) {
+            target.put("rolCarpool", isCarpool ? "DRIVER" : "NONE");
+        }
+
+        if ((target.getOrDefault("destinoLat", "").isBlank() || CsvUtil.parseDouble(target.get("destinoLat")) == 0.0) && lat != null) {
+            target.put("destinoLat", lat);
+            target.put("destinoLon", lon == null ? "" : lon);
+        }
+        if (target.getOrDefault("endTimestamp", "").isBlank() && timestamp != null && !timestamp.isBlank()) {
+            target.put("endTimestamp", normalizeTimestamp(timestamp));
+        }
+    }
+
+    private static void upsertPassengerTrips(Path dataDir,
+                                             List<String> headers,
+                                             List<Map<String, String>> trips,
+                                             Map<String, String> driverTrip,
+                                             long carpoolId,
+                                             int peopleInCarpool) throws Exception {
+        String driverSessionId = driverTrip.getOrDefault("sessionID", "");
+        long driverUserId = CsvUtil.parseLong(driverTrip.get("userID"));
+
+        List<Long> passengerIds = CsvUtil.readRows(dataDir, JOINS_FILE).stream()
+                .filter(row -> CsvUtil.parseLong(row.get("offerID")) == carpoolId)
+                .filter(row -> row.getOrDefault("estado", "CONFIRMADO").equalsIgnoreCase("CONFIRMADO"))
+                .map(row -> CsvUtil.parseLong(row.get("userID")))
+                .filter(id -> id > 0 && id != driverUserId)
+                .distinct()
+                .collect(Collectors.toList());
+
+        long nextTripId = nextTripId(trips);
+        for (long passengerId : passengerIds) {
+            Map<String, String> passengerTrip = findPassengerTrip(trips, driverSessionId, passengerId, carpoolId);
+            boolean isNew = passengerTrip == null;
+
+            if (passengerTrip == null) {
+                passengerTrip = new LinkedHashMap<>(driverTrip);
+                passengerTrip.put("tripID", String.valueOf(nextTripId++));
+                passengerTrip.put("sessionID", driverSessionId + "-P" + passengerId);
+                trips.add(passengerTrip);
+            }
+
+            passengerTrip.put("userID", String.valueOf(passengerId));
+            passengerTrip.put("carpoolID", String.valueOf(carpoolId));
+            passengerTrip.put("esCarpool", "true");
+            passengerTrip.put("numPasajeros", String.valueOf(Math.max(1, peopleInCarpool)));
+            passengerTrip.put("rolCarpool", "PASSENGER");
+            passengerTrip.put("carpoolDriverSessionID", driverSessionId);
+            passengerTrip.put("tripTypeIcon", "👥");
+            passengerTrip.put("estadoCalculo", "CALCULADO");
+
+            // Garantiza que cualquier columna nueva existe también en la fila copiada.
+            for (String header : headers) {
+                passengerTrip.putIfAbsent(header, "");
+            }
+
+            if (isNew) {
+                System.out.println("[CsvTripResultUpdater] Viaje carpool creado para pasajero user=" + passengerId
+                        + " desde session=" + driverSessionId);
+            }
+        }
+    }
+
+    private static Map<String, String> findPassengerTrip(List<Map<String, String>> trips,
+                                                         String driverSessionId,
+                                                         long passengerId,
+                                                         long carpoolId) {
+        for (Map<String, String> trip : trips) {
+            boolean sameLinkedSession = driverSessionId.equals(trip.getOrDefault("carpoolDriverSessionID", ""));
+            boolean samePassenger = CsvUtil.parseLong(trip.get("userID")) == passengerId;
+            boolean sameCarpool = CsvUtil.parseLong(trip.get("carpoolID")) == carpoolId;
+            boolean passengerRole = "PASSENGER".equalsIgnoreCase(trip.getOrDefault("rolCarpool", ""));
+            if (sameLinkedSession && samePassenger && sameCarpool && passengerRole) {
+                return trip;
+            }
+        }
+        return null;
+    }
+
+    private static long nextTripId(List<Map<String, String>> trips) {
+        long max = 0;
+        for (Map<String, String> trip : trips) {
+            max = Math.max(max, CsvUtil.parseLong(trip.get("tripID")));
+        }
+        return max + 1;
+    }
+
+    private static int countCarpoolPeople(Path dataDir, long carpoolId) {
+        if (carpoolId <= 0) return 1;
+        try {
+            long passengers = CsvUtil.readRows(dataDir, JOINS_FILE).stream()
+                    .filter(row -> CsvUtil.parseLong(row.get("offerID")) == carpoolId)
+                    .filter(row -> row.getOrDefault("estado", "CONFIRMADO").equalsIgnoreCase("CONFIRMADO"))
+                    .map(row -> CsvUtil.parseLong(row.get("userID")))
+                    .filter(id -> id > 0)
+                    .distinct()
+                    .count();
+            return Math.max(1, (int) passengers + 1);
+        } catch (Exception e) {
+            return 1;
+        }
+    }
+
+    private static EmissionResult calculateEmission(double km,
+                                                    String mode,
+                                                    CarInfo userCar,
+                                                    boolean isCarpool,
+                                                    int peopleInCarpool) {
+        double carKgKm = Math.max(0.0, userCar.kgKm);
+        double savingsBaselineKgKm = carKgKm > 0.0 ? carKgKm : DEFAULT_CAR_KG_KM;
+
+        if ("Autoa".equals(mode)) {
+            if (isCarpool && peopleInCarpool >= 2) {
+                double consumedPerPerson = (km * carKgKm) / peopleInCarpool;
+                double comparableSoloTrip = km * savingsBaselineKgKm;
+                double saved = Math.max(0.0, comparableSoloTrip - consumedPerPerson);
+                int points = Math.max(1, (int) Math.round(saved * 5.0));
+                return new EmissionResult(consumedPerPerson, saved, points);
+            }
+
+            double consumed = km * carKgKm;
+            if (userCar.electric) {
+                double saved = Math.max(0.0, km * (DEFAULT_CAR_KG_KM - carKgKm));
+                int points = km > 0.0 ? Math.max(1, (int) Math.round(km / 5.0)) : 0;
+                return new EmissionResult(consumed, saved, points);
+            }
+
+            return new EmissionResult(consumed, 0.0, 0);
+        }
+
+        double transportKgKm = emissionFactor(mode);
+        double consumed = km * transportKgKm;
+        double saved = Math.max(0.0, km * savingsBaselineKgKm - consumed);
+        int points = calculateSustainablePoints(km, saved, mode);
+        return new EmissionResult(consumed, saved, points);
+    }
+
+    private static int calculateSustainablePoints(double km, double co2Saved, String mode) {
+        if (km <= 0.0 && co2Saved <= 0.0) {
+            return 1;
+        }
+
+        double multiplier = switch (mode) {
+            case "Oinez", "Bizikleta" -> 10.0;
+            case "Patinete" -> 8.0;
+            case "Trena" -> 7.0;
+            case "Autobusa" -> 6.0;
+            default -> 5.0;
+        };
+
+        return Math.max(1, (int) Math.round(km * 2.0 + co2Saved * multiplier));
+    }
+
+    private static CarInfo resolveUserCar(Path dataDir, int userId) {
+        try {
+            for (Map<String, String> user : CsvUtil.readRows(dataDir, USERS_FILE)) {
+                if (CsvUtil.parseLong(user.get("userID")) == userId) {
+                    boolean hasCar = Boolean.parseBoolean(user.getOrDefault("tieneCoche", "false"));
+                    String modelId = user.getOrDefault("modeloCocheID", "SIN_COCHE");
+                    if (!hasCar || modelId.isBlank() || "SIN_COCHE".equalsIgnoreCase(modelId)) {
+                        return new CarInfo("SIN_COCHE", DEFAULT_CAR_KG_KM, "Referencia", false);
+                    }
+                    return resolveCarByModel(dataDir, modelId);
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("[CsvTripResultUpdater] No se ha podido leer usuarios.csv: " + e.getMessage());
+        }
+        return new CarInfo("DEFAULT", DEFAULT_CAR_KG_KM, "Referencia", false);
+    }
+
+    private static CarInfo resolveCarByModel(Path dataDir, String modelId) {
+        try {
+            for (Map<String, String> car : CsvUtil.readRows(dataDir, CARS_FILE)) {
+                if (car.getOrDefault("modeloCocheID", "").equalsIgnoreCase(modelId)) {
+                    String type = car.getOrDefault("tipo", "");
+                    double kgKm = Math.max(0.0, CsvUtil.parseDouble(car.get("emisionesKgKm")));
+                    boolean electric = type.equalsIgnoreCase("Electrico")
+                            || modelId.toUpperCase(Locale.ROOT).contains("EV")
+                            || modelId.toUpperCase(Locale.ROOT).contains("TESLA")
+                            || modelId.toUpperCase(Locale.ROOT).contains("LEAF");
+                    return new CarInfo(modelId, kgKm, type, electric);
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("[CsvTripResultUpdater] No se ha podido leer coches.csv: " + e.getMessage());
+        }
+        return new CarInfo(modelId, DEFAULT_CAR_KG_KM, "Referencia", false);
+    }
+
     private static String normalizeMode(String mode) {
         if (mode == null) return "Besteak";
         return switch (mode.toUpperCase(Locale.ROOT)) {
@@ -550,6 +799,7 @@ public final class CsvTripResultUpdater {
         return ts;
     }
 
+<<<<<<< HEAD
 
     private static final class DbTripStore {
         private static final String DB_URL = env("DB_URL", "");
@@ -757,6 +1007,8 @@ public final class CsvTripResultUpdater {
                                 boolean carpool,
                                 int personas) {}
 
+=======
+>>>>>>> cc5ed4dfae45db41af6469d1c5fade7ad98a6143
     private record CarInfo(String modelId, double kgKm, String type, boolean electric) {}
     private record EmissionResult(double consumedKg, double savedKg, int points) {}
 }
