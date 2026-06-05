@@ -264,8 +264,8 @@ function renderLogin() {
                     <h2>Ongi etorri<br>berriro</h2>
                     <p>Sartu zure kontuan zure mugikortasun datuak ikusteko.</p>
                     <div style="display:grid;gap:12px;margin-top:28px">
-                        <div class="feature-pill">👤 Probako erabiltzailea: jonu / 123456</div>
-                        <div class="feature-pill">👤 Beste erabiltzailea: anez / 123456</div>
+                        <div class="feature-pill">👤 Probako erabiltzailea: jonu / EcoMove2026!</div>
+                        <div class="feature-pill">👤 Beste erabiltzailea: anez / EcoMove2026!</div>
                         <div class="feature-pill">📊 Estatistikak ez dira berdinak erabiltzaile guztientzat</div>
                     </div>
                 </div>
@@ -281,7 +281,7 @@ function renderLogin() {
                     </div>
                     <div class="form-group">
                         <label>Contraseña</label>
-                        <input name="contrasena" type="password" value="123456" required>
+                        <input name="contrasena" type="password" value="EcoMove2026!" autocomplete="current-password" required>
                     </div>
                     <button class="btn" style="width:100%">Sartu</button>
                     <p style="text-align:center;margin-top:24px">Ez duzu konturik? <a href="#/register">Erregistratu</a></p>
@@ -309,11 +309,11 @@ async function renderRegister() {
                 <div>
                     <div style="font-size:80px;margin-bottom:18px">🚀</div>
                     <h2>Batu gure<br>komunitateari</h2>
-                    <p>Erregistroan aukeratutako enpresa eta autoa CSVtik irakurtzen dira.</p>
+                    <p>Erregistroan pasahitz sendoa eskatzen da eta BDn hash seguru gisa gordetzen da.</p>
                     <div class="grid-2" style="margin-top:28px">
                         <div class="feature-pill">🏢 Empresas desde empresas.csv</div>
                         <div class="feature-pill">🚗 Coches desde coches.csv</div>
-                        <div class="feature-pill">💾 Usuario guardado en usuarios.csv</div>
+                        <div class="feature-pill">🔐 Contraseña con hash PBKDF2</div>
                         <div class="feature-pill">📊 Datos personalizados</div>
                     </div>
                 </div>
@@ -340,7 +340,8 @@ async function renderRegister() {
                         </div>
                         <div class="form-group">
                             <label>Contraseña</label>
-                            <input name="contrasena" type="password" value="123456" required>
+                            <input name="contrasena" type="password" value="EcoMove2026!" minlength="12" autocomplete="new-password" pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{12,}" title="Gutxienez 12 karaktere: maiuskula, minuskula, zenbakia eta karaktere berezia" required>
+                            <small style="color:#6b7280;font-weight:800">Gutxienez 12 karaktere: maiuskula, minuskula, zenbakia eta karaktere berezia.</small>
                         </div>
                     </div>
                     <div class="form-group">
@@ -374,6 +375,16 @@ async function renderRegister() {
             </div>
         </section>
     `;
+}
+
+
+function validatePasswordPolicy(password) {
+    if (!password || password.length < 12) return 'La contraseña debe tener al menos 12 caracteres';
+    if (!/[a-z]/.test(password)) return 'La contraseña debe incluir una minúscula';
+    if (!/[A-Z]/.test(password)) return 'La contraseña debe incluir una mayúscula';
+    if (!/\d/.test(password)) return 'La contraseña debe incluir un número';
+    if (!/[^A-Za-z0-9]/.test(password)) return 'La contraseña debe incluir un carácter especial';
+    return '';
 }
 
 function toggleCarFields(value) {
@@ -416,7 +427,7 @@ async function login(event) {
 
     } catch (error) {
         console.error('Login error:', error);
-        showToast('Usuario o contraseña incorrectos');
+        showToast(error.message || 'Usuario o contraseña incorrectos');
     }
 }
 
@@ -424,6 +435,12 @@ async function register(event) {
     event.preventDefault();
 
     const form = new FormData(event.target);
+    const passwordError = validatePasswordPolicy(String(form.get('contrasena') || ''));
+    if (passwordError) {
+        showToast(passwordError);
+        return;
+    }
+
     const tieneCoche = form.get('tieneCoche') === 'true';
 
     const data = {
@@ -463,7 +480,7 @@ async function register(event) {
 
     } catch (error) {
         console.error('Register error:', error);
-        showToast('No se pudo crear la cuenta');
+        showToast(error.message || 'No se pudo crear la cuenta');
     }
 }
 

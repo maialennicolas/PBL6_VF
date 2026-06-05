@@ -37,10 +37,12 @@ public class UserCsvService {
 
     private final UsuarioRepository usuarioRepository;
     private final CsvDataService csv;
+    private final PasswordService passwordService;
 
-    public UserCsvService(UsuarioRepository usuarioRepository, CsvDataService csv) {
+    public UserCsvService(UsuarioRepository usuarioRepository, CsvDataService csv, PasswordService passwordService) {
         this.usuarioRepository = usuarioRepository;
         this.csv = csv;
+        this.passwordService = passwordService;
     }
 
     /**
@@ -69,7 +71,7 @@ public class UserCsvService {
                     usuario.setNombre(row.getOrDefault("nombre", ""));
                     usuario.setApellidos(row.getOrDefault("apellidos", ""));
                     usuario.setNombreUsuario(row.getOrDefault("nombreUsuario", ""));
-                    usuario.setContrasena(row.getOrDefault("contrasena", ""));
+                    usuario.setContrasena(passwordService.hashIfNeeded(row.getOrDefault("contrasena", "")));
                     usuario.setEmail(row.getOrDefault("email", usuario.getNombreUsuario() + "@ecomove.local"));
                     usuario.setTieneCoche(Boolean.parseBoolean(row.getOrDefault("tieneCoche", "false")));
                     usuario.setModeloCocheID(row.getOrDefault("modeloCocheID", "SIN_COCHE"));
@@ -89,8 +91,9 @@ public class UserCsvService {
     }
 
     private void seedFallbackUsers() {
-        Usuario jon = new Usuario(0, 101, "Jon", "Urrutia", "jonu", "123456", "jonu@ecomove.eus", true, "TESLA_MODEL_3", "Bilbo");
-        Usuario ane = new Usuario(0, 101, "Ane", "Zabala", "anez", "123456", "anez@ecomove.eus", false, "SIN_COCHE", "Getxo");
+        String demoPassword = passwordService.hash("EcoMove2026!");
+        Usuario jon = new Usuario(0, 101, "Jon", "Urrutia", "jonu", demoPassword, "jonu@ecomove.eus", true, "TESLA_MODEL_3", "Bilbo");
+        Usuario ane = new Usuario(0, 101, "Ane", "Zabala", "anez", demoPassword, "anez@ecomove.eus", false, "SIN_COCHE", "Getxo");
         usuarioRepository.save(jon);
         usuarioRepository.save(ane);
     }
@@ -125,6 +128,14 @@ public class UserCsvService {
         Usuario saved = usuarioRepository.save(entity);
         mirrorUsersCsv();
         return toUser(saved);
+    }
+
+    public void updatePasswordHash(long userId, String rawPassword) {
+        Usuario user = usuarioRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+        user.setContrasena(passwordService.hash(rawPassword));
+        usuarioRepository.save(user);
+        mirrorUsersCsv();
     }
 
     /**
@@ -213,7 +224,7 @@ public class UserCsvService {
         entity.setNombre(safe(user.nombre(), ""));
         entity.setApellidos(safe(user.apellidos(), ""));
         entity.setNombreUsuario(safe(user.nombreUsuario(), ""));
-        entity.setContrasena(safe(user.contrasena(), ""));
+        entity.setContrasena(passwordService.hashIfNeeded(safe(user.contrasena(), "")));
         entity.setEmail(safe(user.email(), user.nombreUsuario() + "@ecomove.local"));
         entity.setTieneCoche(user.tieneCoche());
         entity.setModeloCocheID(user.tieneCoche() ? safe(user.modeloCocheID(), "SIN_COCHE") : "SIN_COCHE");

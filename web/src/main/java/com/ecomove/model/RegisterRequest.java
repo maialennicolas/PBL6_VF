@@ -2,6 +2,8 @@ package com.ecomove.model;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 
 public record RegisterRequest(
         @NotNull(message = "La empresa es obligatoria")
@@ -17,6 +19,11 @@ public record RegisterRequest(
         String nombreUsuario,
 
         @NotBlank(message = "La contraseña es obligatoria")
+        @Size(min = 12, message = "La contraseña debe tener al menos 12 caracteres")
+        @Pattern(
+                regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z0-9]).+$",
+                message = "La contraseña debe incluir mayúscula, minúscula, número y carácter especial"
+        )
         String contrasena,
 
         String email,

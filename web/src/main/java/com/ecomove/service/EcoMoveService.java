@@ -77,11 +77,13 @@ public class EcoMoveService {
     private final UserCsvService userCsvService;
     private final CsvDataService csv;
     private final RabbitMqTripPublisher sycdPublisher;
+    private final PasswordService passwordService;
 
-    public EcoMoveService(UserCsvService userCsvService, CsvDataService csv, RabbitMqTripPublisher sycdPublisher) {
+    public EcoMoveService(UserCsvService userCsvService, CsvDataService csv, RabbitMqTripPublisher sycdPublisher, PasswordService passwordService) {
         this.userCsvService = userCsvService;
         this.csv = csv;
         this.sycdPublisher = sycdPublisher;
+        this.passwordService = passwordService;
     }
 
     public AuthResponse login(LoginRequest request) {
@@ -93,14 +95,25 @@ public class EcoMoveService {
 
         User user = userOptional.get();
 
-        if (!user.contrasena().equals(request.contrasena())) {
+        if (!passwordService.matches(request.contrasena(), user.contrasena())) {
             return new AuthResponse(false, "Contraseña incorrecta", null);
+        }
+
+        // Migración transparente: si el usuario antiguo estaba en texto plano,
+        // se reescribe como hash PBKDF2 después de un login correcto.
+        if (passwordService.shouldRehash(user.contrasena())) {
+            userCsvService.updatePasswordHash(user.userID(), request.contrasena());
         }
 
         return new AuthResponse(true, "Login correcto", buildProfile(user));
     }
 
     public AuthResponse register(RegisterRequest request) {
+        Optional<String> passwordError = passwordService.validateStrongPassword(request.contrasena());
+        if (passwordError.isPresent()) {
+            return new AuthResponse(false, passwordError.get(), null);
+        }
+
         if (userCsvService.findByNombreUsuario(request.nombreUsuario()).isPresent()) {
             return new AuthResponse(false, "El nombre de usuario ya existe", null);
         }
