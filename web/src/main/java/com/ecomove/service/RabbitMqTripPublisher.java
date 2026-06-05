@@ -6,7 +6,11 @@ import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
 import org.springframework.stereotype.Service;
 
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManagerFactory;
+import java.io.FileInputStream;
 import java.nio.charset.StandardCharsets;
+import java.security.KeyStore;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Locale;
@@ -30,12 +34,27 @@ public class RabbitMqTripPublisher {
 
     public RabbitMqTripPublisher() {
         this.factory = new ConnectionFactory();
+        boolean tlsEnabled = Boolean.parseBoolean(env("RABBITMQ_TLS_ENABLED", "true"));
         factory.setHost(env("RABBITMQ_HOST", "localhost"));
-        factory.setPort(Integer.parseInt(env("RABBITMQ_PORT", "5672")));
+        factory.setPort(Integer.parseInt(env("RABBITMQ_PORT", tlsEnabled ? "5671" : "5672")));
         factory.setUsername(env("RABBITMQ_USER", "guest"));
         factory.setPassword(env("RABBITMQ_PASS", "guest"));
         factory.setAutomaticRecoveryEnabled(true);
         factory.setTopologyRecoveryEnabled(true);
+
+        if (tlsEnabled) {
+            try {
+                factory.useSslProtocol(createSslContext());
+                factory.enableHostnameVerification();
+                System.out.println("[WEB->SYCD][TLS] RabbitMQ amqps://"
+                        + env("RABBITMQ_HOST", "localhost") + ":" + env("RABBITMQ_PORT", "5671"));
+            } catch (Exception e) {
+                throw new IllegalStateException("No se ha podido activar TLS para RabbitMQ: " + e.getMessage(), e);
+            }
+        } else {
+            System.out.println("[WEB->SYCD][AMQP] RabbitMQ amqp://"
+                    + env("RABBITMQ_HOST", "localhost") + ":" + env("RABBITMQ_PORT", "5672"));
+        }
     }
 
     public boolean publish(LocationTrackRequest request,
@@ -110,6 +129,24 @@ public class RabbitMqTripPublisher {
         } catch (Exception ignored) {
             return System.currentTimeMillis();
         }
+    }
+
+
+    private SSLContext createSslContext() throws Exception {
+        String truststorePath = env("RABBITMQ_TRUSTSTORE", "/app/tls/truststore.jks");
+        String truststorePassword = env("RABBITMQ_TRUSTSTORE_PASSWORD", "pbl6pass");
+
+        KeyStore trustStore = KeyStore.getInstance("JKS");
+        try (FileInputStream in = new FileInputStream(truststorePath)) {
+            trustStore.load(in, truststorePassword.toCharArray());
+        }
+
+        TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+        tmf.init(trustStore);
+
+        SSLContext sslContext = SSLContext.getInstance("TLSv1.2");
+        sslContext.init(null, tmf.getTrustManagers(), null);
+        return sslContext;
     }
 
     private String env(String name, String fallback) {

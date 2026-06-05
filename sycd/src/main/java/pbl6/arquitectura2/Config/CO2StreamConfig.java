@@ -10,6 +10,7 @@ public class CO2StreamConfig {
     public static final String EXCHANGE_CO2_RESULTADO = "resultado_co2";
     public static final String QUEUE_CO2_RESULTADO    = "resultado_co2";
     public static final String EXCHANGE_LAINOA2       = "lainoa2";
+    public static final String QUEUE_CO2_CONSULTAS    = "q.co2.consultas";
 
     public void configurar() {
         try (Connection connection = TLSConfig.crearFactory().newConnection();
@@ -28,7 +29,10 @@ public class CO2StreamConfig {
             channel.exchangeDeclare(EXCHANGE_LAINOA2, "fanout", true);
             System.out.println("[CO2Config] LAINOA2 (fanout) OK");
 
-            System.out.println("[CO2Config] ✔ TLS-rekin konfiguratuta.");
+            channel.queueDeclare(QUEUE_CO2_CONSULTAS, true, false, false, null);
+            System.out.println("[CO2Config] RPC consultas CO2 -> " + QUEUE_CO2_CONSULTAS + " OK");
+
+            System.out.println("[CO2Config] TLS configurado correctamente.");
 
         } catch (Exception e) {
             e.printStackTrace();

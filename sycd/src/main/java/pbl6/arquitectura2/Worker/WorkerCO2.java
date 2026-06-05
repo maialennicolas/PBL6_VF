@@ -1,6 +1,11 @@
 package pbl6.arquitectura2.Worker;
 
-import com.rabbitmq.client.*;
+import com.rabbitmq.client.AMQP;
+import com.rabbitmq.client.Channel;
+import com.rabbitmq.client.Connection;
+import com.rabbitmq.client.ConnectionFactory;
+import com.rabbitmq.client.DefaultConsumer;
+import com.rabbitmq.client.Envelope;
 
 import pbl6.arquitectura2.Config.CO2StreamConfig;
 import pbl6.arquitectura2.Config.TLSConfig;
@@ -8,7 +13,8 @@ import pbl6.arquitectura2.Gestor.CalculadoraCO2;
 import pbl6.arquitectura2.Gestor.CalculadoraCO2.ResultadoCO2;
 
 import java.io.IOException;
-import java.util.Scanner;
+import java.nio.charset.StandardCharsets;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -17,18 +23,18 @@ public class WorkerCO2 {
     static final int NUM_THREADS = 4;
 
     private final ConnectionFactory factory;
-    private final ExecutorService   pool;
+    private final ExecutorService pool;
 
     public WorkerCO2() throws Exception {
-        this.factory = TLSConfig.crearFactory();   // ← TLS
-        this.pool    = Executors.newFixedThreadPool(NUM_THREADS);
+        this.factory = TLSConfig.crearFactory();
+        this.pool = Executors.newFixedThreadPool(NUM_THREADS);
     }
 
     public void suscribir() {
         try (Connection connection = factory.newConnection()) {
             Channel channel = connection.createChannel();
 
-            channel.exchangeDeclare(CO2StreamConfig.EXCHANGE_CO2_FANOUT,    "fanout", true);
+            channel.exchangeDeclare(CO2StreamConfig.EXCHANGE_CO2_FANOUT, "fanout", true);
             channel.exchangeDeclare(CO2StreamConfig.EXCHANGE_CO2_RESULTADO, "direct", true);
 
             channel.queueDeclare(CO2StreamConfig.QUEUE_CO2, true, false, false, null);
@@ -43,75 +49,71 @@ public class WorkerCO2 {
             channel.basicQos(NUM_THREADS);
             channel.basicConsume(CO2StreamConfig.QUEUE_CO2, false, new MiConsumer(channel));
 
-            System.out.println("[WorkerCO2] Thread Pool (" + NUM_THREADS +
-                    " threads) esperando en Q:co2... [TLS aktibo]");
+            System.out.println("[WorkerCO2 - Arquitectura 2] Esperando resultados finales de Arquitectura 1 en Q:co2...");
+            System.out.println("[WorkerCO2 - Arquitectura 2] Calcula CO2/puntos con BD, modelo de coche y carpool.");
             System.out.println("──────────────────────────────────────────────────────");
 
-            synchronized (this) {
-                try { wait(); } catch (InterruptedException e) { e.printStackTrace(); }
-            }
-            pool.shutdown();
-            channel.close();
+            new CountDownLatch(1).await();
 
         } catch (Exception e) {
             e.printStackTrace();
+        } finally {
+            pool.shutdownNow();
         }
     }
 
-    public synchronized void parar() { notify(); }
-
     public class MiConsumer extends DefaultConsumer {
-        public MiConsumer(Channel channel) { super(channel); }
+        public MiConsumer(Channel channel) {
+            super(channel);
+        }
 
         @Override
-        public void handleDelivery(String consumerTag, Envelope envelope,
-                AMQP.BasicProperties properties, byte[] body) throws IOException {
-            String mensaje = new String(body, "UTF-8");
+        public void handleDelivery(String consumerTag,
+                                   Envelope envelope,
+                                   AMQP.BasicProperties properties,
+                                   byte[] body) throws IOException {
+            String mensaje = new String(body, StandardCharsets.UTF_8);
             pool.execute(() -> {
                 try {
-                    procesarMensaje(mensaje);
+                    ResultadoCO2 resultado = CalculadoraCO2.calcularYActualizar(mensaje);
+                    System.out.printf("[WorkerCO2 - Arquitectura 2][%s] %s%n",
+                            Thread.currentThread().getName(), resultado);
+                    publicarResultado(resultado);
                     synchronized (getChannel()) {
                         getChannel().basicAck(envelope.getDeliveryTag(), false);
                     }
-                } catch (Exception e) { e.printStackTrace(); }
+                } catch (Exception e) {
+                    System.err.println("[WorkerCO2 - Arquitectura 2] Error procesando mensaje: " + mensaje);
+                    e.printStackTrace();
+                    try {
+                        synchronized (getChannel()) {
+                            getChannel().basicNack(envelope.getDeliveryTag(), false, false);
+                        }
+                    } catch (Exception nackError) {
+                        nackError.printStackTrace();
+                    }
+                }
             });
         }
     }
 
-    private void procesarMensaje(String mensaje) throws Exception {
-        ResultadoCO2 resultado;
-        try {
-            resultado = CalculadoraCO2.calcular(mensaje);
-        } catch (IllegalArgumentException e) {
-            System.err.println("[WorkerCO2] Mensaje inválido: " + mensaje);
-            return;
-        }
-
-        System.out.printf("[WorkerCO2][%s] %s%n", Thread.currentThread().getName(), resultado);
-
-        String msgResultado = resultado.toLainoa2();
-
-        synchronized (factory) {
-            try (Connection conn = factory.newConnection();
-                 Channel ch = conn.createChannel()) {
-                ch.basicPublish(
-                        CO2StreamConfig.EXCHANGE_CO2_RESULTADO,
-                        CO2StreamConfig.QUEUE_CO2_RESULTADO,
-                        null,
-                        msgResultado.getBytes());
-            }
+    private void publicarResultado(ResultadoCO2 resultado) throws Exception {
+        try (Connection conn = factory.newConnection();
+             Channel ch = conn.createChannel()) {
+            ch.exchangeDeclare(CO2StreamConfig.EXCHANGE_CO2_RESULTADO, "direct", true);
+            ch.basicPublish(
+                    CO2StreamConfig.EXCHANGE_CO2_RESULTADO,
+                    CO2StreamConfig.QUEUE_CO2_RESULTADO,
+                    null,
+                    resultado.toLainoa2().getBytes(StandardCharsets.UTF_8));
         }
     }
 
     public static void main(String[] args) {
-        System.out.println("[WorkerCO2] Iniciando con TLS. Pulsa ENTER para parar.");
         try {
-            WorkerCO2 worker = new WorkerCO2();
-            Scanner teclado = new Scanner(System.in);
-            new Thread(() -> { teclado.nextLine(); worker.parar(); teclado.close(); }).start();
-            worker.suscribir();
+            new WorkerCO2().suscribir();
         } catch (Exception e) {
-            System.err.println("[WorkerCO2] Error TLS: " + e.getMessage());
+            System.err.println("[WorkerCO2 - Arquitectura 2] Error: " + e.getMessage());
             e.printStackTrace();
         }
     }

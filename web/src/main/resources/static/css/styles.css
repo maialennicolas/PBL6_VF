@@ -586,3 +586,149 @@ input:focus, select:focus {
         display: block;
     }
 }
+
+
+/* Hasiera: ahora Azken bidaiak ocupa todo el ancho útil para evitar recortes. */
+.home-stack {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 18px;
+    min-width: 0;
+}
+
+/* Azken bidaiak: lista responsive sin barra horizontal ni contenido cortado. */
+.trips-card {
+    overflow: hidden;
+    min-width: 0;
+}
+
+.trips-list {
+    display: grid;
+    gap: 12px;
+    width: 100%;
+    min-width: 0;
+}
+
+.trip-item {
+    display: grid;
+    grid-template-columns: minmax(150px, 1fr) minmax(170px, 1.35fr) minmax(70px, .45fr) minmax(170px, 1fr) minmax(96px, .55fr) minmax(86px, .45fr);
+    gap: 12px;
+    align-items: center;
+    padding: 14px 16px;
+    border: 1px solid #f3f4f6;
+    border-radius: 18px;
+    background: #fff;
+    min-width: 0;
+    width: 100%;
+}
+
+.trip-item.is-carpool {
+    border-left: 5px solid var(--purple);
+}
+
+.trip-item.is-normal {
+    border-left: 5px solid #e5e7eb;
+}
+
+.trip-cell,
+.trip-main,
+.trip-route-cell,
+.trip-co2,
+.trip-km,
+.trip-date,
+.trip-status {
+    min-width: 0;
+}
+
+.trip-title,
+.trip-route-line {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    flex-wrap: wrap;
+}
+
+.trip-title strong,
+.trip-route-line strong {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: normal;
+}
+
+.trip-type-icon {
+    flex: 0 0 auto;
+}
+
+.trip-muted,
+.trip-meta,
+.trip-label {
+    display: block;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1.35;
+}
+
+.trip-label {
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: #9ca3af;
+    margin-bottom: 2px;
+}
+
+.trip-km strong,
+.trip-date strong {
+    display: block;
+    overflow-wrap: anywhere;
+}
+
+.co2-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    max-width: 100%;
+    padding: 6px 9px;
+    border-radius: 12px;
+    background: var(--green-soft);
+    color: var(--green-dark);
+    font-size: 12px;
+    font-weight: 900;
+    line-height: 1.25;
+    flex-wrap: wrap;
+}
+
+.trip-status .badge {
+    max-width: 100%;
+    white-space: normal;
+    text-align: center;
+}
+
+@media (max-width: 1400px) {
+    .trip-item {
+        grid-template-columns: minmax(160px, 1fr) minmax(170px, 1.2fr) minmax(120px, .7fr) minmax(130px, .8fr);
+    }
+
+    .trip-co2 {
+        grid-column: span 2;
+    }
+
+    .trip-status .badge {
+        width: fit-content;
+    }
+}
+
+@media (max-width: 950px) {
+    .trip-item {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .trip-co2 {
+        grid-column: auto;
+    }
+
+    .trip-status .badge {
+        width: fit-content;
+    }
+}
