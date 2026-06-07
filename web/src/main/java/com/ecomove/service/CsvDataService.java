@@ -334,6 +334,10 @@ public class CsvDataService {
             }
 
             List<String> currentHeaders = readHeadersFromFile(filename);
+<<<<<<< HEAD
+=======
+
+>>>>>>> abbc914a46c211873014dda4083bfebd2ab6052d
             List<String> mergedHeaders = new ArrayList<>(currentHeaders);
             boolean changed = false;
 
@@ -345,8 +349,15 @@ public class CsvDataService {
             }
 
             if (changed) {
+<<<<<<< HEAD
                 List<Map<String, String>> rows = readRowsFromFile(filename);
                 writeRowsToFile(filename, mergedHeaders, rows);
+=======
+
+                List<Map<String, String>> rows = readRowsFromFile(filename);
+                writeRowsToFile(filename, mergedHeaders, rows);
+
+>>>>>>> abbc914a46c211873014dda4083bfebd2ab6052d
                 currentHeaders = mergedHeaders;
             }
 
@@ -367,6 +378,10 @@ public class CsvDataService {
     }
 
     private List<String> readHeadersFromFile(String filename) {
+<<<<<<< HEAD
+=======
+
+>>>>>>> abbc914a46c211873014dda4083bfebd2ab6052d
         ensureDataDir();
         Path path = dataDir.resolve(filename);
 

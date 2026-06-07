@@ -1,4 +1,28 @@
 userID,empresaID,nombre,apellidos,nombreUsuario,contrasena,email,tieneCoche,modeloCocheID,puebloCiudad
+<<<<<<< HEAD
 1,101,Jon,Urrutia,jonu,123456,jonu@ecomove.eus,false,SIN_COCHE,Arrasate
 2,101,Ane,Zubizarreta,anez,123456,anez@ecomove.eus,true,TESLA_MODEL_3,Bilbo
 3,102,I??aki,Garitano,inaki,123456,inaki@ecomove.eus,true,RENAULT_CLIO,Donostia
+=======
+<<<<<<< HEAD
+1,101,Jon,Urrutia,jonu,123456,jonu@ecomove.eus,false,SIN_COCHE,Arrasate
+2,101,Ane,Zubizarreta,anez,123456,anez@ecomove.eus,true,TESLA_MODEL_3,Bilbo
+3,102,I??aki,Garitano,inaki,123456,inaki@ecomove.eus,true,RENAULT_CLIO,Donostia
+=======
+1,101,Jon,Urrutia,jonu,123456,jonu@ecomove.eus,true,TESLA_MODEL_3,Bilbo
+2,101,Ane,Zabala,anez,123456,anez@ecomove.eus,false,SIN_COCHE,Getxo
+3,102,Mikel,Etxea,mikele,123456,mikel@aldundia.eus,true,TOYOTA_COROLLA,Basauri
+4,102,Leire,Aguirre,leirea,123456,leire@aldundia.eus,false,SIN_COCHE,Leioa
+5,101,Nerea,Mendizabal,nerea,123456,nerea@ecomove.eus,true,RENAULT_CLIO,Bilbo
+6,101,Nerea3,Mendizabal,nerea3,123456,nerea3@ecomove.eus,false,SIN_COCHE,Bilbo
+7,101,Nerea,Mendizabal,nereaa,123456,nereaa@ecomove.eus,true,TESLA_MODEL_3,Bilbo
+8,101,Iñaki,Garitano,igaritano,12345,igaritano@mondragon.edu,true,CITROEN_C3_D,Oñati
+9,101,prueba,Mendizabal,prueba,123456,prueba@ecomove.eus,true,DACIA_SANDERO_G,Bilbo
+10,101,Nerea,Mendizabal,prueba3,123456,prueba3@ecomove.eus,true,LAND_ROVER_DISCOVERY_SPORT_D,Bilbo
+11,101,mai,nico,mai,12345,mai@ecomove.eus,true,TESLA_MODEL_X,Oñati
+12,101,alex,hers,alex,12345,alex@ecomove.eus,true,CITROEN_C5_AIRCROSS_D,Antzuola
+13,101,Ene,Grana,ene,12345,ene@ecomove.eus,true,FORD_KUGA_PHEV,Laudio
+14,101,ibai,lazkano,lazkano,12345,lazkano@ecomove.eus,true,SEAT_IBIZA_G,Aretxabaleta
+15,101,Mikel,Uribe,uribe,12345,uribe@ecomove.eus,true,KIA_EV6,Elorrio
+>>>>>>> cc5ed4dfae45db41af6469d1c5fade7ad98a6143
+>>>>>>> abbc914a46c211873014dda4083bfebd2ab6052d
