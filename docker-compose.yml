@@ -14,6 +14,32 @@ services:
       timeout: 5s
       retries: 10
 
+  sonarqube:
+    image: sonarqube:lts-community
+    container_name: ecomove-sonarqube
+    ports:
+      - "9000:9000"
+    environment:
+      SONAR_JDBC_URL: jdbc:postgresql://sonar-db:5432/sonar
+      SONAR_JDBC_USERNAME: sonar
+      SONAR_JDBC_PASSWORD: sonar
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_extensions:/opt/sonarqube/extensions
+      - sonarqube_logs:/opt/sonarqube/logs
+    depends_on:
+      - sonar-db
+
+  sonar-db:
+    image: postgres:16
+    container_name: ecomove-sonar-db
+    environment:
+      POSTGRES_USER: sonar
+      POSTGRES_PASSWORD: sonar
+      POSTGRES_DB: sonar
+    volumes:
+      - sonar_db:/var/lib/postgresql/data
+
   ecomove-db:
     image: mariadb:11
     container_name: ecomove-db
@@ -128,3 +154,7 @@ volumes:
   matomo_db:
   matomo_app:
   grafana_data:
+  sonar_db:
+  sonarqube_data:
+  sonarqube_extensions:
+  sonarqube_logs:
