@@ -4,7 +4,4 @@ offerID,userID,origen,destino,time,seats,active,distance,rating
 3,1,Bilbo,Derio,09:15,3,true,1.5 km,4.7
 4,5,Bilbo,Arrasate,08:30,3,true,0.5 km,4.7
 5,5,Bilbo,Getxo,08:30,1,true,0.5 km,4.7
-6,8,Oñati,Getxo,08:30,1,true,0.5 km,4.7
-7,12,Arrasate,Arrasate,09:45,2,false,0.5 km,4.7
-8,12,Oñati,Arrasate,08:30,1,false,0.5 km,4.7
-9,12,Laudio,Getxo,08:30,1,false,0.5 km,4.7
+6,8,Oñati,Getxo,08:30,1,false,0.5 km,4.7
