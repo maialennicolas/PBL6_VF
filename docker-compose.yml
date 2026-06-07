@@ -11,26 +11,6 @@ services:
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 10s
-<<<<<<< HEAD
-      timeout: 5s
-      retries: 10
-
-  ecomove-db:
-    image: mariadb:11
-    container_name: ecomove-db
-    command: --max-allowed-packet=64MB
-    environment:
-      MYSQL_ROOT_PASSWORD: ecomove_root
-      MYSQL_DATABASE: ecomove_db
-      MYSQL_USER: ecomove
-      MYSQL_PASSWORD: ecomove
-    volumes:
-      - ecomove_db:/var/lib/mysql
-    healthcheck:
-      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
-      interval: 10s
-=======
->>>>>>> cc5ed4dfae45db41af6469d1c5fade7ad98a6143
       timeout: 5s
       retries: 10
 
@@ -89,19 +69,22 @@ services:
       RABBITMQ_PORT: 5671
       RABBITMQ_USER: guest
       RABBITMQ_PASS: guest
-      SPRING_DATASOURCE_URL: jdbc:mysql://matomo-db:3306/matomo?allowPublicKeyRetrieval=true&useSSL=false
-      SPRING_DATASOURCE_USERNAME: matomo
-      SPRING_DATASOURCE_PASSWORD: matomo
+      RABBITMQ_TLS_ENABLED: "true"
+      RABBITMQ_TRUSTSTORE: /app/tls/truststore.jks
+      RABBITMQ_TRUSTSTORE_PASSWORD: pbl6pass
+      SPRING_DATASOURCE_URL: jdbc:mysql://ecomove-db:3306/ecomove_db?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: ecomove
+      SPRING_DATASOURCE_PASSWORD: ecomove
       SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: org.hibernate.dialect.MariaDBDialect
-      SPRING_JPA_HIBERNATE_DDL_AUTO: none
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
     volumes:
       - ./data:/app/data
       - ./rabbitmq/tls/truststore.jks:/app/tls/truststore.jks:ro
     depends_on:
       rabbitmq:
         condition: service_healthy
-      matomo-db:
-        condition: service_started
+      ecomove-db:
+        condition: service_healthy
 
   sycd:
     build: ./sycd
@@ -153,24 +136,25 @@ services:
       MATOMO_DATABASE_DBNAME: matomo
     volumes:
       - matomo_app:/var/www/html
-      # === CAMBIO CLAVE: Mapeamos también la carpeta de configuración ===
-      - matomo_config:/var/www/html/config 
     depends_on:
       - matomo-db
 
   grafana:
     image: grafana/grafana-oss:latest
     container_name: ecomove-grafana
-    user: "0" # === CAMBIO CLAVE: Le da permisos de Administrador (root) para poder escribir en tu disco duro de Windows ===
     ports:
       - "3000:3000"
     volumes:
       - grafana_data:/var/lib/grafana
     depends_on:
-      - matomo-db
+      - ecomove-db
 
 volumes:
   ecomove_db:
   matomo_db:
   matomo_app:
   grafana_data:
+  sonar_db:
+  sonarqube_data:
+  sonarqube_extensions:
+  sonarqube_logs:
