@@ -57,7 +57,9 @@ public class PublisherCO2 {
 
         } catch (Exception e) {
             e.printStackTrace();
+            Thread.currentThread().interrupt();
         }
+        
     }
 
     private List<String> leerDesdeCSV(String ruta) throws IOException {

@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeoutException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.Channel;
@@ -16,6 +18,9 @@ import pbl6.arquitectura1.Publisher.KafkaStreamConfig;
 import pbl6.arquitectura2.Config.CO2StreamConfig;
 
 public class ResultWorker {
+
+    // 1. System.out / System.err ordezkatzeko Logger estatikoa definitu dugu
+    private static final Logger LOGGER = Logger.getLogger(ResultWorker.class.getName());
 
     static final String EXCHANGE_LAINOA = "lainoa";
 
@@ -36,57 +41,61 @@ public class ResultWorker {
 
         try (Connection connection = factory.newConnection()) {
 
-            Channel channel = connection.createChannel();
+            try (Channel channel = connection.createChannel()) {
 
-            channel.exchangeDeclare(
-                    KafkaStreamConfig.EXCHANGE_EMAITZA,
-                    "direct",
-                    true);
+                channel.exchangeDeclare(
+                        KafkaStreamConfig.EXCHANGE_EMAITZA,
+                        "direct",
+                        true);
 
-            channel.exchangeDeclare(
-                    EXCHANGE_LAINOA,
-                    "fanout",
-                    true);
+                channel.exchangeDeclare(
+                        EXCHANGE_LAINOA,
+                        "fanout",
+                        true);
 
-            channel.exchangeDeclare(
-                    CO2StreamConfig.EXCHANGE_CO2_FANOUT,
-                    "fanout",
-                    true);
+                channel.exchangeDeclare(
+                        CO2StreamConfig.EXCHANGE_CO2_FANOUT,
+                        "fanout",
+                        true);
 
-            channel.queueDeclare(
-                    KafkaStreamConfig.QUEUE_EMAITZA,
-                    true,
-                    false,
-                    false,
-                    null);
+                // ERROREAREN ZUZENKETA: 6 parametro zirenak 5era jaitsi dira (Zure jatorrizko
+                // egitura errespetatuz)
+                channel.queueDeclare(
+                        KafkaStreamConfig.QUEUE_EMAITZA,
+                        true,
+                        false,
+                        false,
+                        null);
 
-            channel.queueBind(
-                    KafkaStreamConfig.QUEUE_EMAITZA,
-                    KafkaStreamConfig.EXCHANGE_EMAITZA,
-                    KafkaStreamConfig.QUEUE_EMAITZA);
+                channel.queueBind(
+                        KafkaStreamConfig.QUEUE_EMAITZA,
+                        KafkaStreamConfig.EXCHANGE_EMAITZA,
+                        KafkaStreamConfig.QUEUE_EMAITZA);
 
-            channel.basicQos(1);
+                channel.basicQos(1);
 
-            channel.basicConsume(
-                    KafkaStreamConfig.QUEUE_EMAITZA,
-                    false,
-                    new MiConsumer(channel));
+                channel.basicConsume(
+                        KafkaStreamConfig.QUEUE_EMAITZA,
+                        false,
+                        new MiConsumer(channel));
 
-            System.out.println("[ResultWorker] Esperando resultados de Arquitectura 1...");
-            System.out.println("[ResultWorker] El CO2 se delega a Arquitectura 2 mediante fanout_co2.");
+                // System.out ordezkatuz:
+                LOGGER.info("[ResultWorker] Esperando resultados de Arquitectura 1...");
+                LOGGER.info("[ResultWorker] El CO2 se delega a Arquitectura 2 mediante fanout_co2.");
 
-            synchronized (this) {
+                synchronized (this) {
 
-                try {
-                    wait();
+                    try {
+                        wait();
 
-                } catch (InterruptedException e) {
+                    } catch (InterruptedException e) {
 
-                    Thread.currentThread().interrupt();
+                        Thread.currentThread().interrupt();
+                    }
                 }
-            }
 
-            channel.close();
+                channel.close();
+            }
 
         } catch (IOException | TimeoutException e) {
 
@@ -96,7 +105,7 @@ public class ResultWorker {
 
     public synchronized void parar() {
 
-        notify();
+        notifyAll();
     }
 
     public class MiConsumer extends DefaultConsumer {
@@ -142,13 +151,12 @@ public class ResultWorker {
                 new Thread(() -> {
 
                     try {
-
                         Thread.sleep(2000);
                         guardarSiMejora(resultadoKey, mensaje);
-
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt(); // <--- GEHITU LERRO HAU
                     } catch (Exception e) {
-
-                        e.printStackTrace();
+                        LOGGER.log(Level.SEVERE, "Errorea background harian", e);
                     }
 
                 }).start();
@@ -176,13 +184,15 @@ public class ResultWorker {
     }
 
     private String clasificacion(String mensaje) {
-        if (mensaje == null || mensaje.isBlank()) return "";
+        if (mensaje == null || mensaje.isBlank())
+            return "";
         String[] p = mensaje.trim().split("\\s+");
         return p.length >= 3 ? p[2] : "";
     }
 
     private int prioridad(String clasificacion) {
-        if (clasificacion == null) return 0;
+        if (clasificacion == null)
+            return 0;
         return switch (clasificacion) {
             case "BUS", "TREN" -> 3;
             case "KOTXEA" -> 2;
@@ -201,30 +211,27 @@ public class ResultWorker {
 
         publicarEnArquitectura2(mensaje);
 
-        System.out.println(
-                "[ResultWorker] USER "
-                        + userId
-                        + " → "
-                        + clasificacion
-                        + " | enviado a Arquitectura 2 para CO2/puntos");
-
-        System.out.println(
-                "[Lainoa] "
-                        + mensaje);
+        // System.out.println lerroak Logger.info formatura bideratuta:
+        LOGGER.info(String.format("[ResultWorker] USER %d → %s | enviado a Arquitectura 2 para CO2/puntos", userId,
+                clasificacion));
+        LOGGER.info(String.format("[Lainoa] %s", mensaje));
     }
 
     private void publicarEnArquitectura2(String mensaje) {
         try (Connection conn = factory.newConnection();
-             Channel ch = conn.createChannel()) {
+                Channel ch = conn.createChannel()) {
             ch.exchangeDeclare(CO2StreamConfig.EXCHANGE_CO2_FANOUT, "fanout", true);
             ch.basicPublish(
                     CO2StreamConfig.EXCHANGE_CO2_FANOUT,
                     "",
                     null,
                     mensaje.getBytes("UTF-8"));
-            System.out.println("[ResultWorker→Arquitectura2] fanout_co2: " + mensaje);
+
+            // System.out ordezkatuz:
+            LOGGER.info(String.format("[ResultWorker→Arquitectura2] fanout_co2: %s", mensaje));
         } catch (Exception e) {
-            System.err.println("[ResultWorker] No se ha podido enviar a Arquitectura 2: " + e.getMessage());
+            // System.err ordezkatuz:
+            LOGGER.log(Level.SEVERE, "[ResultWorker] No se ha podido enviar a Arquitectura 2: " + e.getMessage());
             e.printStackTrace();
         }
     }

@@ -88,7 +88,7 @@ public class TaskWorker {
     }
 
     public synchronized void parar() {
-        notify();
+        notifyAll();
     }
 
     public class MiConsumer extends DefaultConsumer {

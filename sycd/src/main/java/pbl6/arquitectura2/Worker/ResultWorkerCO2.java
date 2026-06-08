@@ -24,6 +24,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.DoubleAdder;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * ResultWorkerCO2 cumple dos funciones en la Arquitectura 2:
@@ -33,6 +35,8 @@ import java.util.concurrent.atomic.DoubleAdder;
  * Las consultas RPC usan RabbitMQ/TLS, correlationId y replyTo.
  */
 public class ResultWorkerCO2 {
+
+    private static final Logger LOGGER = Logger.getLogger(ResultWorkerCO2.class.getName());
 
     public static final String QUEUE_CO2_CONSULTAS = "q.co2.consultas";
 
@@ -56,9 +60,8 @@ public class ResultWorkerCO2 {
     }
 
     public void suscribir() {
-        try {
-            com.rabbitmq.client.Connection connection = factory.newConnection();
-            Channel channel = connection.createChannel();
+        try (com.rabbitmq.client.Connection connection = factory.newConnection();
+             Channel channel = connection.createChannel()) {
 
             channel.exchangeDeclare(CO2StreamConfig.EXCHANGE_CO2_RESULTADO, "direct", true);
             channel.exchangeDeclare(CO2StreamConfig.EXCHANGE_LAINOA2, "fanout", true);
@@ -74,16 +77,19 @@ public class ResultWorkerCO2 {
             channel.queueDeclare(QUEUE_CO2_CONSULTAS, true, false, false, null);
             channel.basicConsume(QUEUE_CO2_CONSULTAS, false, new ServerRPCCO2Consumer(channel));
 
-            System.out.println("[ResultWorkerCO2] Esperando resultados y consultas RPC en Q:" + QUEUE_CO2_CONSULTAS
-                    + " [TLS activo]");
-            System.out.println(
-                    "[ResultWorkerCO2] Consultas disponibles: STATUS, METRICS, USER <id>, EMPRESA <id>, EMPRESA_USER <empresaId>:<userId>");
-            System.out.println("------------------------------------------------------");
+            LOGGER.info(String.format("[ResultWorkerCO2] Esperando resultados y consultas RPC en Q:%s [TLS activo]", QUEUE_CO2_CONSULTAS));
+            LOGGER.info("[ResultWorkerCO2] Consultas disponibles: STATUS, METRICS, USER <id>, EMPRESA <id>, EMPRESA_USER <empresaId>:<userId>");
+            LOGGER.info("------------------------------------------------------");
 
-            Thread.currentThread().join();
+            try {
+                Thread.currentThread().join();
+            } catch (InterruptedException e) {
+                LOGGER.log(Level.SEVERE, "Thread join execution interrupted", e);
+                Thread.currentThread().interrupt(); // SOLUCIÓN AL BUG BUG de InterruptedException
+            }
 
         } catch (Exception e) {
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Exception in rabbit connection/channel routing", e);
         }
     }
 
@@ -103,8 +109,8 @@ public class ResultWorkerCO2 {
         }
 
         @Override
-        public void handleDelivery(String consumerTag, Envelope envelope,
-                AMQP.BasicProperties properties, byte[] body) throws IOException {
+         public void handleDelivery(String consumerTag, Envelope envelope,
+                                   AMQP.BasicProperties properties, byte[] body) throws IOException {
 
             String mensaje = new String(body, StandardCharsets.UTF_8);
             String[] p = mensaje.split(" ");
@@ -135,7 +141,7 @@ public class ResultWorkerCO2 {
                     }
                 }
             } catch (Exception e) {
-                System.err.println("[ResultWorkerCO2] Error procesando resultado CO2: " + e.getMessage());
+                LOGGER.log(Level.SEVERE, "[ResultWorkerCO2] Error procesando resultado CO2: " + e.getMessage(), e);
                 getChannel().basicNack(envelope.getDeliveryTag(), false, false);
             }
         }
@@ -148,7 +154,7 @@ public class ResultWorkerCO2 {
 
         @Override
         public void handleDelivery(String consumerTag, Envelope envelope,
-                AMQP.BasicProperties properties, byte[] body) throws IOException {
+                                   AMQP.BasicProperties properties, byte[] body) throws IOException {
 
             rpcRequests.incrementAndGet();
             String corrId = properties.getCorrelationId() == null ? "" : properties.getCorrelationId();
@@ -370,37 +376,37 @@ public class ResultWorkerCO2 {
 
     private void enviarALainoa2(String mensaje) {
         try (com.rabbitmq.client.Connection conn = factory.newConnection();
-                Channel ch = conn.createChannel()) {
+             Channel ch = conn.createChannel()) {
             ch.exchangeDeclare(CO2StreamConfig.EXCHANGE_LAINOA2, "fanout", true);
             ch.basicPublish(CO2StreamConfig.EXCHANGE_LAINOA2, "", null, mensaje.getBytes(StandardCharsets.UTF_8));
         } catch (Exception e) {
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error forwarding to Lainoa2", e);
         }
     }
 
     private synchronized void imprimirResumenActual() {
-        System.out.println();
+        LOGGER.info("");
         List<EstadisticasEmpresa> empresas = new ArrayList<>(estadisticas.values());
         empresas.sort(Comparator.comparingInt(e -> e.empresaId));
         for (EstadisticasEmpresa empresa : empresas) {
             double media = empresa.co2Total.sum() / Math.max(1, empresa.usuarios.size());
-            System.out.printf(Locale.US, "empresa %d: (media %.1f)%n", empresa.empresaId, media);
+            LOGGER.info(String.format(Locale.US, "empresa %d: (media %.1f)", empresa.empresaId, media));
             List<DatosUsuario> usuarios = new ArrayList<>(empresa.usuarios.values());
             usuarios.sort(Comparator.comparingInt(u -> u.userId));
             for (DatosUsuario u : usuarios) {
-                System.out.printf(Locale.US,
-                        "  user %d -> MODALIDAD: %s | DISTANCIA: %.2f km | CO2: %.1f g | AHORRO: %.1f g | COORDENADAS: [%s, %s] | FECHA: %s%n",
+                LOGGER.info(String.format(Locale.US,
+                        "  user %d -> MODALIDAD: %s | DISTANCIA: %.2f km | CO2: %.1f g | AHORRO: %.1f g | COORDENADAS: [%s, %s] | FECHA: %s",
                         u.userId, u.mota, u.distanciaKm, u.co2Gramos, u.co2Ahorrado, u.lat, u.lon,
-                        formatearTimestamp(u.timestamp));
+                        formatearTimestamp(u.timestamp)));
             }
-            System.out.println();
+            LOGGER.info("");
         }
     }
 
     private void imprimirResumenFinal() {
-        System.out.println("\n------------------------------------------------------");
+        LOGGER.info("\n------------------------------------------------------");
         imprimirResumenActual();
-        System.out.println("------------------------------------------------------");
+        LOGGER.info("------------------------------------------------------");
     }
 
     private boolean dbConfigured() {
@@ -430,7 +436,7 @@ public class ResultWorkerCO2 {
     private String findCompanyName(Connection cn, long empresaId) throws SQLException {
         try (PreparedStatement ps = cn.prepareStatement(
                 "SELECT `nombre` FROM empresas_ecomove WHERE CAST(NULLIF(`empresaID`, '') AS UNSIGNED) = ? LIMIT 1")) {
-            ps.setLong(1, empresaId);
+            ps.setString(1, String.valueOf(empresaId));
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next())
                     return rs.getString(1) == null ? "" : rs.getString(1);
@@ -450,24 +456,97 @@ public class ResultWorkerCO2 {
         }
     }
 
+    private DbTotals queryDbTotals() throws SQLException {
+        try (Connection cn = connection()) {
+            long users = 0;
+            try (Statement st = cn.createStatement();
+                 ResultSet rs = st.executeQuery("SELECT COUNT(*) FROM usuarios_ecomove")) {
+                if (rs.next())
+                    users = rs.getLong(1);
+            }
+            TripTotals t = tripTotals(cn, "", 0);
+            return new DbTotals(users, t.trips, t.km, t.consumed, t.saved, t.points, t.carpoolTrips);
+        }
+    }
+
+    // SOLUCIÓN AL BUG S2695: Separar la ejecución de PreparedStatement solo cuando hay filtros reales con "?"
     private TripTotals tripTotals(Connection cn, String where, long param) throws SQLException {
-        String sql = "SELECT COUNT(*), "
+        String baseSql = "SELECT COUNT(*), "
                 + "COALESCE(SUM(CAST(COALESCE(NULLIF(`km`, ''), '0') AS DECIMAL(14,4))),0), "
                 + "COALESCE(SUM(CAST(COALESCE(NULLIF(`co2ConsumidoKg`, ''), '0') AS DECIMAL(14,4))),0), "
                 + "COALESCE(SUM(CAST(COALESCE(NULLIF(`co2AhorradoKg`, ''), '0') AS DECIMAL(14,4))),0), "
                 + "COALESCE(SUM(CAST(COALESCE(NULLIF(`puntos`, ''), '0') AS DECIMAL(14,4))),0), "
                 + "SUM(CASE WHEN LOWER(COALESCE(`esCarpool`, 'false')) = 'true' THEN 1 ELSE 0 END) "
-                + "FROM viajes_ecomove " + where;
-        try (PreparedStatement ps = cn.prepareStatement(sql)) {
-            if (where != null && where.contains("?")) {
-                ps.setLong(1, param);
-            }
-            try (ResultSet rs = ps.executeQuery()) {
+                + "FROM viajes_ecomove ";
+
+        if (where == null || where.isBlank() || !where.contains("?")) {
+            String sql = baseSql + (where == null ? "" : where);
+            try (Statement st = cn.createStatement();
+                 ResultSet rs = st.executeQuery(sql)) {
                 return readTripTotals(rs);
+            }
+        } else {
+            String sql = baseSql + where;
+            try (PreparedStatement ps = cn.prepareStatement(sql)) {
+                ps.setString(1, String.valueOf(param));
+                try (ResultSet rs = ps.executeQuery()) {
+                    return readTripTotals(rs);
+                }
             }
         }
     }
 
+    // SOLUCIÓN AL BUG S2695: Usar Statement clásico si no se inyectan parámetros condicionales
+    private String modesJson(Connection cn, String where, long param) throws SQLException {
+        String selectFrom = "SELECT COALESCE(NULLIF(`modo`, ''), 'SIN_CALCULAR') AS mode, COUNT(*), "
+                + "COALESCE(SUM(CAST(COALESCE(NULLIF(`km`, ''), '0') AS DECIMAL(14,4))),0), "
+                + "COALESCE(SUM(CAST(COALESCE(NULLIF(`co2AhorradoKg`, ''), '0') AS DECIMAL(14,4))),0) "
+                + "FROM viajes_ecomove ";
+        String groupBy = " GROUP BY COALESCE(NULLIF(`modo`, ''), 'SIN_CALCULAR')";
+        
+        if (where == null || where.isBlank() || !where.contains("?")) {
+            String sql = selectFrom + (where == null ? "" : where) + groupBy;
+            try (Statement st = cn.createStatement();
+                 ResultSet rs = st.executeQuery(sql)) {
+                return modeRowsJson(rs);
+            }
+        } else {
+            String sql = selectFrom + where + groupBy;
+            try (PreparedStatement ps = cn.prepareStatement(sql)) {
+                ps.setString(1, String.valueOf(param));
+                try (ResultSet rs = ps.executeQuery()) {
+                    return modeRowsJson(rs);
+                }
+            }
+        }
+    }
+
+    // SOLUCIÓN AL BUG S2695: Usar Statement clásico si no se requiere parámetro en el filtro WHERE
+    private String modesJsonJoin(Connection cn, String where, long param) throws SQLException {
+        String selectFrom = "SELECT COALESCE(NULLIF(t.`modo`, ''), 'SIN_CALCULAR') AS mode, COUNT(*), "
+                + "COALESCE(SUM(CAST(COALESCE(NULLIF(t.`km`, ''), '0') AS DECIMAL(14,4))),0), "
+                + "COALESCE(SUM(CAST(COALESCE(NULLIF(t.`co2AhorradoKg`, ''), '0') AS DECIMAL(14,4))),0) "
+                + "FROM viajes_ecomove t ";
+        String groupBy = " GROUP BY COALESCE(NULLIF(t.`modo`, ''), 'SIN_CALCULAR')";
+        
+        if (where == null || where.isBlank() || !where.contains("?")) {
+            String sql = selectFrom + (where == null ? "" : where) + groupBy;
+            try (Statement st = cn.createStatement();
+                 ResultSet rs = st.executeQuery(sql)) {
+                return modeRowsJson(rs);
+            }
+        } else {
+            String sql = selectFrom + where + groupBy;
+            try (PreparedStatement ps = cn.prepareStatement(sql)) {
+                ps.setLong(1, param);
+                try (ResultSet rs = ps.executeQuery()) {
+                    return modeRowsJson(rs);
+                }
+            }
+        }
+    }
+
+    // SOLUCIÓN AL BUG S2695: Controlar dinámicamente si es un Statement (sin parámetro) o PreparedStatement (con parámetro)
     private TripTotals tripTotalsJoin(Connection cn, String where, long param) throws SQLException {
         String sql = "SELECT COUNT(*), "
                 + "COALESCE(SUM(CAST(COALESCE(NULLIF(t.`km`, ''), '0') AS DECIMAL(14,4))),0), "
@@ -475,12 +554,18 @@ public class ResultWorkerCO2 {
                 + "COALESCE(SUM(CAST(COALESCE(NULLIF(t.`co2AhorradoKg`, ''), '0') AS DECIMAL(14,4))),0), "
                 + "COALESCE(SUM(CAST(COALESCE(NULLIF(t.`puntos`, ''), '0') AS DECIMAL(14,4))),0), "
                 + "SUM(CASE WHEN LOWER(COALESCE(t.`esCarpool`, 'false')) = 'true' THEN 1 ELSE 0 END) "
-                + "FROM viajes_ecomove t " + where;
-        try (PreparedStatement ps = cn.prepareStatement(sql)) {
-            if (where != null && where.contains("?")) {
+                + "FROM viajes_ecomove t " + (where == null ? "" : where);
+
+        if (where != null && where.contains("?")) {
+            try (PreparedStatement ps = cn.prepareStatement(sql)) {
                 ps.setLong(1, param);
+                try (ResultSet rs = ps.executeQuery()) {
+                    return readTripTotals(rs);
+                }
             }
-            try (ResultSet rs = ps.executeQuery()) {
+        } else {
+            try (Statement st = cn.createStatement();
+                 ResultSet rs = st.executeQuery(sql)) {
                 return readTripTotals(rs);
             }
         }
@@ -492,32 +577,6 @@ public class ResultWorkerCO2 {
                     rs.getLong(6));
         }
         return new TripTotals(0, 0, 0, 0, 0, 0);
-    }
-
-    private String modesJson(Connection cn, String where, long param) throws SQLException {
-        String sql = "SELECT COALESCE(NULLIF(`modo`, ''), 'SIN_CALCULAR') AS mode, COUNT(*), "
-                + "COALESCE(SUM(CAST(COALESCE(NULLIF(`km`, ''), '0') AS DECIMAL(14,4))),0), "
-                + "COALESCE(SUM(CAST(COALESCE(NULLIF(`co2AhorradoKg`, ''), '0') AS DECIMAL(14,4))),0) "
-                + "FROM viajes_ecomove " + where + " GROUP BY COALESCE(NULLIF(`modo`, ''), 'SIN_CALCULAR')";
-        try (PreparedStatement ps = cn.prepareStatement(sql)) {
-            ps.setLong(1, param);
-            try (ResultSet rs = ps.executeQuery()) {
-                return modeRowsJson(rs);
-            }
-        }
-    }
-
-    private String modesJsonJoin(Connection cn, String where, long param) throws SQLException {
-        String sql = "SELECT COALESCE(NULLIF(t.`modo`, ''), 'SIN_CALCULAR') AS mode, COUNT(*), "
-                + "COALESCE(SUM(CAST(COALESCE(NULLIF(t.`km`, ''), '0') AS DECIMAL(14,4))),0), "
-                + "COALESCE(SUM(CAST(COALESCE(NULLIF(t.`co2AhorradoKg`, ''), '0') AS DECIMAL(14,4))),0) "
-                + "FROM viajes_ecomove t " + where + " GROUP BY COALESCE(NULLIF(t.`modo`, ''), 'SIN_CALCULAR')";
-        try (PreparedStatement ps = cn.prepareStatement(sql)) {
-            ps.setLong(1, param);
-            try (ResultSet rs = ps.executeQuery()) {
-                return modeRowsJson(rs);
-            }
-        }
     }
 
     private String modeRowsJson(ResultSet rs) throws SQLException {
@@ -540,7 +599,7 @@ public class ResultWorkerCO2 {
 
     private String latestTripsJson(Connection cn, String where, long param, int limit) throws SQLException {
         String sql = "SELECT `tripID`, `sessionID`, `modo`, `km`, `co2ConsumidoKg`, `co2AhorradoKg`, `puntos`, `fecha`, `esCarpool`, `rolCarpool` "
-                + "FROM viajes_ecomove " + where
+                + "FROM viajes_ecomove WHERE CAST(NULLIF(`userID`, '') AS UNSIGNED) = ?"
                 + " ORDER BY CAST(COALESCE(NULLIF(`tripID`, ''), '0') AS UNSIGNED) DESC LIMIT ?";
         try (PreparedStatement ps = cn.prepareStatement(sql)) {
             ps.setLong(1, param);
@@ -568,19 +627,6 @@ public class ResultWorkerCO2 {
                 out.append(']');
                 return out.toString();
             }
-        }
-    }
-
-    private DbTotals queryDbTotals() throws SQLException {
-        try (Connection cn = connection()) {
-            long users = 0;
-            try (Statement st = cn.createStatement();
-                    ResultSet rs = st.executeQuery("SELECT COUNT(*) FROM usuarios_ecomove")) {
-                if (rs.next())
-                    users = rs.getLong(1);
-            }
-            TripTotals t = tripTotals(cn, "", 0);
-            return new DbTotals(users, t.trips, t.km, t.consumed, t.saved, t.points, t.carpoolTrips);
         }
     }
 
@@ -637,8 +683,8 @@ public class ResultWorkerCO2 {
         final String lat, lon, timestamp;
 
         DatosUsuario(int userId, String mota, double distanciaKm,
-                double co2Gramos, double co2Ahorrado,
-                String lat, String lon, String timestamp) {
+                     double co2Gramos, double co2Ahorrado,
+                     String lat, String lon, String timestamp) {
             this.userId = userId;
             this.mota = mota;
             this.distanciaKm = distanciaKm;
@@ -661,7 +707,7 @@ public class ResultWorkerCO2 {
         }
 
         synchronized void agregarUsuario(int userId, String mota, double distKm,
-                double co2g, double ahorradoG, String lat, String lon, String timestamp) {
+                                         double co2g, double ahorradoG, String lat, String lon, String timestamp) {
             DatosUsuario anterior = usuarios.get(userId);
             if (anterior != null) {
                 co2Total.add(-anterior.co2Gramos);
@@ -680,15 +726,14 @@ public class ResultWorkerCO2 {
     }
 
     private record DbTotals(long users, long trips, double km, double consumed, double saved, long points,
-            long carpoolTrips) {
+                            long carpoolTrips) {
     }
 
     public static void main(String[] args) {
         try {
             new ResultWorkerCO2().suscribir();
         } catch (Exception e) {
-            System.err.println("[ResultWorkerCO2] Error TLS/RPC: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "[ResultWorkerCO2] Error TLS/RPC: " + e.getMessage(), e);
         }
     }
 }
