@@ -1,4 +1,4 @@
 userID,empresaID,nombre,apellidos,nombreUsuario,contrasena,email,tieneCoche,modeloCocheID,puebloCiudad
-1,101,Jon,Urrutia,jonu,123456,jonu@ecomove.eus,false,SIN_COCHE,Arrasate
+1,101,Jon,Urrutia,jonu,pbkdf2_sha256$210000$Pr2P3GUtAO+GsR6GKflLbg==$PvDMhElnkwqQ82XnKg7SRoVPH7ps5tJzfXu7d4ldGq0=,jonu@ecomove.eus,false,SIN_COCHE,Arrasate
 2,101,Ane,Zubizarreta,anez,123456,anez@ecomove.eus,true,TESLA_MODEL_3,Bilbo
 3,102,I??aki,Garitano,inaki,123456,inaki@ecomove.eus,true,RENAULT_CLIO,Donostia

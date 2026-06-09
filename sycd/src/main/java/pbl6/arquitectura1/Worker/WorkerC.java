@@ -36,7 +36,7 @@ public class WorkerC {
 
     public void suscribir() {
         try (Connection connection = factory.newConnection()) {
-            Channel channel = connection.createChannel();
+            try (Channel channel = connection.createChannel()) {
 
             channel.exchangeDeclare(KafkaStreamConfig.EXCHANGE_FANOUT, "fanout", true);
             channel.exchangeDeclare(KafkaStreamConfig.EXCHANGE_EMAITZA, "direct", true);
@@ -56,12 +56,13 @@ public class WorkerC {
             }
             pool.shutdown();
             channel.close();
+        }
         } catch (IOException | TimeoutException e) {
             e.printStackTrace();
         }
     }
 
-    public synchronized void parar() { notify(); }
+    public synchronized void parar() { notifyAll(); }
 
     public class MiConsumer extends DefaultConsumer {
         public MiConsumer(Channel channel) { super(channel); }

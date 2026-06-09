@@ -1,6 +1,7 @@
 package pbl6.arquitectura1.Worker;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -30,7 +31,7 @@ public class WorkerP {
 
     public void suscribir() {
         try (Connection connection = factory.newConnection()) {
-            Channel channel = connection.createChannel();
+            try (Channel channel = connection.createChannel()) {
 
             channel.exchangeDeclare(KafkaStreamConfig.EXCHANGE_FANOUT, "fanout", true);
             channel.exchangeDeclare(KafkaStreamConfig.EXCHANGE_EMAITZA, "direct", true);
@@ -50,12 +51,13 @@ public class WorkerP {
             }
             pool.shutdown();
             channel.close();
+        }
         } catch (IOException | TimeoutException e) {
             e.printStackTrace();
         }
     }
 
-    public synchronized void parar() { notify(); }
+    public synchronized void parar() { notifyAll(); }
 
     static String clasificar(ResumenWorker resumen) {
         double velocidad = resumen.velocidadMediaKmh > 0.0
@@ -77,7 +79,7 @@ public class WorkerP {
 
         @Override
         public void handleDelivery(String consumerTag, Envelope envelope, AMQP.BasicProperties properties, byte[] body) throws IOException {
-            String mensaje = new String(body, "UTF-8");
+            String mensaje = new String(body, StandardCharsets.UTF_8);
             pool.execute(() -> {
                 try {
                     procesarMensaje(mensaje);

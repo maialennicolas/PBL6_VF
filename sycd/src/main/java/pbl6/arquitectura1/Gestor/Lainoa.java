@@ -32,38 +32,47 @@ public class Lainoa {
 
     public void suscribir() {
         try (Connection connection = factory.newConnection()) {
-            Channel channel = connection.createChannel();
+            try (Channel channel = connection.createChannel()) {
+                channel.exchangeDeclare(EXCHANGE_LAINOA, "fanout", true);
 
-            channel.exchangeDeclare(EXCHANGE_LAINOA, "fanout", true);
+                // Cola anónima exclusiva: cada instancia de Lainoa recibe todos los mensajes
+                String cola = channel.queueDeclare().getQueue();
+                channel.queueBind(cola, EXCHANGE_LAINOA, "");
 
-            // Cola anónima exclusiva: cada instancia de Lainoa recibe todos los mensajes
-            String cola = channel.queueDeclare().getQueue();
-            channel.queueBind(cola, EXCHANGE_LAINOA, "");
+                channel.basicConsume(cola, true, new MiConsumer(channel));
 
-            channel.basicConsume(cola, true, new MiConsumer(channel));
+                System.out.println("[Lainoa] Conectada. Esperando resultados...");
+                System.out.println("──────────────────────────────────────────────────────");
 
-            System.out.println("[Lainoa] Conectada. Esperando resultados...");
-            System.out.println("──────────────────────────────────────────────────────");
-
-            synchronized (this) {
-                try { wait(); } catch (InterruptedException e) { e.printStackTrace(); }
+                synchronized (this) {
+                    try {
+                        wait();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                        Thread.currentThread().interrupt(); // <--- Lerro hau gehitu
+                    }
+                }
+                channel.close();
             }
-            channel.close();
 
         } catch (IOException | TimeoutException e) {
             e.printStackTrace();
         }
     }
 
-    public synchronized void parar() { notify(); }
+    public synchronized void parar() {
+        notifyAll();
+    }
 
     public class MiConsumer extends DefaultConsumer {
 
-        public MiConsumer(Channel channel) { super(channel); }
+        public MiConsumer(Channel channel) {
+            super(channel);
+        }
 
         @Override
         public void handleDelivery(String consumerTag, Envelope envelope,
-                                   AMQP.BasicProperties properties, byte[] body) throws IOException {
+                AMQP.BasicProperties properties, byte[] body) throws IOException {
 
             String mensaje = new String(body, "UTF-8");
 
@@ -82,7 +91,10 @@ public class Lainoa {
         Scanner teclado = new Scanner(System.in);
         System.out.println("[Lainoa] Servicio iniciado. Pulsa ENTER para parar.");
         Lainoa lainoa = new Lainoa();
-        new Thread(() -> { teclado.nextLine(); lainoa.parar(); }).start();
+        new Thread(() -> {
+            teclado.nextLine();
+            lainoa.parar();
+        }).start();
         lainoa.suscribir();
         teclado.close();
     }

@@ -31,8 +31,8 @@ public class WorkerCO2 {
     }
 
     public void suscribir() {
-        try (Connection connection = factory.newConnection()) {
-            Channel channel = connection.createChannel();
+        try (Connection connection = factory.newConnection();
+     Channel channel = connection.createChannel()) {
 
             channel.exchangeDeclare(CO2StreamConfig.EXCHANGE_CO2_FANOUT, "fanout", true);
             channel.exchangeDeclare(CO2StreamConfig.EXCHANGE_CO2_RESULTADO, "direct", true);
@@ -57,6 +57,7 @@ public class WorkerCO2 {
 
         } catch (Exception e) {
             e.printStackTrace();
+            Thread.currentThread().interrupt(); // <--- GEHITU LERRO HAU
         } finally {
             pool.shutdownNow();
         }
