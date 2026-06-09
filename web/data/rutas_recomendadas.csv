@@ -1,0 +1,5 @@
+routeID,userID,origen,destino,duracion,distance,co2
+1,1,Bilbo · Abando,Getxo · Las Arenas,38 min,18.2 km,0 kg
+2,2,Getxo · Areeta,Bilbo · Moyua,41 min,18.1 km,0 kg
+3,3,Basauri · Ariz,Bilbo · Abando,19 min,8.8 km,0 kg
+4,4,Leioa · Campus,Bilbo · San Mames,36 min,13.6 km,0 kg

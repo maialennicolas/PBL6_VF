@@ -36,17 +36,11 @@ PIDS=()
 wait_for_rabbitmq
 
 java -cp "$CP" pbl6.arquitectura1.Publisher.KafkaStreamConfig || true
-java -cp "$CP" pbl6.arquitectura2.Config.CO2StreamConfig || true
 
 start_java "TaskWorker" pbl6.arquitectura1.Worker.TaskWorker
 start_java "WorkerC" pbl6.arquitectura1.Worker.WorkerC
 start_java "WorkerP" pbl6.arquitectura1.Worker.WorkerP
 start_java "WorkerKP" pbl6.arquitectura1.Worker.WorkerKP
 start_java "ResultWorker" pbl6.arquitectura1.Resultado.ResultWorker
-
-# Arquitectura 2: cálculo de CO2/puntos después de la clasificación de transporte.
-start_java "WorkerCO2" pbl6.arquitectura2.Worker.WorkerCO2
-start_java "ResultWorkerCO2" pbl6.arquitectura2.Worker.ResultWorkerCO2
-start_java "Lainoa2" pbl6.arquitectura2.Publisher.Lainoa2
 
 wait -n "${PIDS[@]}"

@@ -131,9 +131,9 @@ public class EcoMoveService {
                 modeloCoche,
                 request.puebloCiudad());
 
-        User savedUser = userCsvService.saveUser(user);
+        userCsvService.saveUser(user);
 
-        return new AuthResponse(true, "Usuario registrado correctamente", buildProfile(savedUser));
+        return new AuthResponse(true, "Usuario registrado correctamente", buildProfile(user));
     }
 
     public UserProfile getProfile(long userId) {

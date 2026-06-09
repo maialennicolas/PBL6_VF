@@ -1,0 +1,19 @@
+id,name,color,minutes,status,stops
+EKI,Ekialdebus · Donostialdea eta Bidasoa,#16a34a,3,garaiz,231
+EUS,Euskotren · tren eta tranbia geralekuak,#0ea5e9,4,garaiz,801
+BIZ,Bizkaibus · Bizkaiko geralekuak,#d97706,5,garaiz,2336
+EKI-DONO,Ekialdebus · Donostia,#16a34a,3,garaiz,77
+EKI-IRUN,Ekialdebus · Irun,#16a34a,4,garaiz,37
+EKI-HOND,Ekialdebus · Hondarribia,#16a34a,5,garaiz,33
+EKI-ERRE,Ekialdebus · Errenteria,#16a34a,6,garaiz,25
+EKI-OIAR,Ekialdebus · Oiartzun,#16a34a,7,garaiz,24
+EKI-PASA,Ekialdebus · Pasai San Pedro,#16a34a,2,garaiz,12
+EUS-BILB,Euskotren · Bilbao,#0ea5e9,3,garaiz,134
+EUS-DONO,Euskotren · Donostia-San Sebastián,#0ea5e9,4,garaiz,96
+EUS-VITO,Euskotren · Vitoria-Gasteiz,#0ea5e9,5,garaiz,83
+EUS-EIBA,Euskotren · Eibar,#0ea5e9,6,garaiz,36
+EUS-IRUN,Euskotren · Irun,#0ea5e9,7,garaiz,33
+EUS-ERRE,Euskotren · Errenteria,#0ea5e9,2,garaiz,24
+BIZ-Z3,Bizkaibus · Zona 3,#d97706,3,garaiz,736
+BIZ-Z2,Bizkaibus · Zona 2,#d97706,4,garaiz,728
+BIZ-Z5,Bizkaibus · Zona 5,#d97706,5,garaiz,389

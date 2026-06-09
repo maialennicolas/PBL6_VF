@@ -3,30 +3,10 @@ services:
     image: rabbitmq:3-management
     container_name: ecomove-rabbitmq
     ports:
-      - "5671:5671"
+      - "5672:5672"
       - "15672:15672"
-    volumes:
-      - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
-      - ./rabbitmq/tls:/etc/rabbitmq/ssl:ro
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-
-  ecomove-db:
-    image: mariadb:11
-    container_name: ecomove-db
-    command: --max-allowed-packet=64MB
-    environment:
-      MYSQL_ROOT_PASSWORD: ecomove_root
-      MYSQL_DATABASE: ecomove_db
-      MYSQL_USER: ecomove
-      MYSQL_PASSWORD: ecomove
-    volumes:
-      - ecomove_db:/var/lib/mysql
-    healthcheck:
-      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -40,24 +20,13 @@ services:
       DATA_DIR: /app/data
       SERVER_PORT: 8083
       RABBITMQ_HOST: rabbitmq
-      RABBITMQ_PORT: 5671
+      RABBITMQ_PORT: 5672
       RABBITMQ_USER: guest
       RABBITMQ_PASS: guest
-      RABBITMQ_TLS_ENABLED: "true"
-      RABBITMQ_TRUSTSTORE: /app/tls/truststore.jks
-      RABBITMQ_TRUSTSTORE_PASSWORD: pbl6pass
-      SPRING_DATASOURCE_URL: jdbc:mysql://ecomove-db:3306/ecomove_db?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
-      SPRING_DATASOURCE_USERNAME: ecomove
-      SPRING_DATASOURCE_PASSWORD: ecomove
-      SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: org.hibernate.dialect.MariaDBDialect
-      SPRING_JPA_HIBERNATE_DDL_AUTO: update
     volumes:
       - ./data:/app/data
-      - ./rabbitmq/tls/truststore.jks:/app/tls/truststore.jks:ro
     depends_on:
       rabbitmq:
-        condition: service_healthy
-      ecomove-db:
         condition: service_healthy
 
   sycd:
@@ -66,22 +35,13 @@ services:
     environment:
       DATA_DIR: /app/data
       RABBITMQ_HOST: rabbitmq
-      RABBITMQ_PORT: 5671
+      RABBITMQ_PORT: 5672
       RABBITMQ_USER: guest
       RABBITMQ_PASS: guest
-      RABBITMQ_TLS_ENABLED: "true"
-      RABBITMQ_TRUSTSTORE: /app/tls/truststore.jks
-      RABBITMQ_TRUSTSTORE_PASSWORD: pbl6pass
-      DB_URL: jdbc:mariadb://ecomove-db:3306/ecomove_db?useUnicode=true&characterEncoding=utf8
-      DB_USER: ecomove
-      DB_PASSWORD: ecomove
     volumes:
       - ./data:/app/data
-      - ./rabbitmq/tls/truststore.jks:/app/tls/truststore.jks:ro
     depends_on:
       rabbitmq:
-        condition: service_healthy
-      ecomove-db:
         condition: service_healthy
 
   matomo-db:
@@ -113,18 +73,6 @@ services:
     depends_on:
       - matomo-db
 
-  grafana:
-    image: grafana/grafana-oss:latest
-    container_name: ecomove-grafana
-    ports:
-      - "3000:3000"
-    volumes:
-      - grafana_data:/var/lib/grafana
-    depends_on:
-      - ecomove-db
-
 volumes:
-  ecomove_db:
   matomo_db:
   matomo_app:
-  grafana_data:
