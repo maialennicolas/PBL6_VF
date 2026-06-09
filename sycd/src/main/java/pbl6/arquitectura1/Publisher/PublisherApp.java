@@ -308,7 +308,7 @@ public class PublisherApp {
             rutaCsv = args[0];
         } else {
             // Cambia esta ruta si tienes el CSV en otro sitio
-            rutaCsv = "demo/usuarios_modelos_reales.csv";
+            rutaCsv = "sycd/usuarios_modelos_reales.csv";
         }
 
         System.out.println("Publicando trayectos aleatorios desde CSV...");
