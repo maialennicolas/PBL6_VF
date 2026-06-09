@@ -14,7 +14,9 @@ public class TLSConfig {
     private static final int PORT = Integer.parseInt(env("RABBITMQ_PORT", TLS_ENABLED ? "5671" : "5672"));
     private static final String USER = env("RABBITMQ_USER", "guest");
     private static final String PASS = env("RABBITMQ_PASS", "guest");
-    private static final String TRUSTSTORE_PATH = env("RABBITMQ_TRUSTSTORE", "/app/tls/truststore.jks");
+    private static final String TRUSTSTORE_PATH =
+        env("RABBITMQ_TRUSTSTORE",
+                "rabbitmq/tls/truststore.jks");
     private static final String TRUSTSTORE_PASSWORD = env("RABBITMQ_TRUSTSTORE_PASSWORD", "pbl6pass");
 
     public static ConnectionFactory crearFactory() throws Exception {

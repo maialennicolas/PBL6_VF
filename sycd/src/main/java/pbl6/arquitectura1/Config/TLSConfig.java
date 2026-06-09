@@ -10,11 +10,13 @@ import java.security.KeyStore;
 public class TLSConfig {
 
     private static final String HOST = env("RABBITMQ_HOST", "localhost");
-    private static final boolean TLS_ENABLED = Boolean.parseBoolean(env("RABBITMQ_TLS_ENABLED", "false"));
+    private static final boolean TLS_ENABLED = Boolean.parseBoolean(env("RABBITMQ_TLS_ENABLED", "true"));
     private static final int PORT = Integer.parseInt(env("RABBITMQ_PORT", TLS_ENABLED ? "5671" : "5672"));
     private static final String USER = env("RABBITMQ_USER", "guest");
     private static final String PASS = env("RABBITMQ_PASS", "guest");
-    private static final String TRUSTSTORE_PATH = env("RABBITMQ_TRUSTSTORE", "/app/tls/truststore.jks");
+    private static final String TRUSTSTORE_PATH =
+        env("RABBITMQ_TRUSTSTORE",
+                "rabbitmq/tls/truststore.jks");
     private static final String TRUSTSTORE_PASSWORD = env("RABBITMQ_TRUSTSTORE_PASSWORD", "pbl6pass");
 
     public static ConnectionFactory crearFactory() throws Exception {
