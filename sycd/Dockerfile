@@ -9,11 +9,8 @@ FROM eclipse-temurin:17-jre
 WORKDIR /app
 ENV DATA_DIR=/app/data
 ENV RABBITMQ_HOST=rabbitmq
-ENV RABBITMQ_PORT=5671
-ENV RABBITMQ_TLS_ENABLED=true
-ENV RABBITMQ_TRUSTSTORE=/app/tls/truststore.jks
-ENV RABBITMQ_TRUSTSTORE_PASSWORD=pbl6pass
+ENV RABBITMQ_PORT=5672
 COPY --from=build /app/target /app/target
 COPY docker-entrypoint.sh /app/docker-entrypoint.sh
-RUN sed -i 's/\r$//' /app/docker-entrypoint.sh && chmod +x /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh
 ENTRYPOINT ["/app/docker-entrypoint.sh"]

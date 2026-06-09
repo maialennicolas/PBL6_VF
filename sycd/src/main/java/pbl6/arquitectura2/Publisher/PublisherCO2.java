@@ -83,7 +83,7 @@ public class PublisherCO2 {
         return mensajes;
     }
 
-    static List<String> generarDatosSimulados() {
+    private List<String> generarDatosSimulados() {
         long now = System.currentTimeMillis();
         List<String> mensajes = new ArrayList<>();
         Object[][] datos = {

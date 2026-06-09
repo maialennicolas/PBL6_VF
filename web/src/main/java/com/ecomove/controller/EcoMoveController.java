@@ -2,7 +2,6 @@ package com.ecomove.controller;
 
 import com.ecomove.model.*;
 import com.ecomove.service.EcoMoveService;
-import com.ecomove.service.SycdQueryClient;
 import jakarta.validation.Valid;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
@@ -15,11 +14,9 @@ import java.util.Map;
 public class EcoMoveController {
 
     private final EcoMoveService service;
-    private final SycdQueryClient sycdQueryClient;
 
-    public EcoMoveController(EcoMoveService service, SycdQueryClient sycdQueryClient) {
+    public EcoMoveController(EcoMoveService service) {
         this.service = service;
-        this.sycdQueryClient = sycdQueryClient;
     }
 
     @PostMapping("/auth/login")
@@ -153,32 +150,6 @@ public class EcoMoveController {
     @GetMapping("/corporate")
     public CorporateDashboard corporate(@RequestParam long userId) {
         return service.getCorporateDashboard(userId);
-    }
-
-    // Servidor de consultas SYCD: la web ofrece REST, pero responde usando RabbitMQ RPC contra Arquitectura 2.
-    @GetMapping("/sycd/status")
-    public Map<String, Object> sycdStatus() {
-        return sycdQueryClient.status();
-    }
-
-    @GetMapping("/sycd/metrics")
-    public Map<String, Object> sycdMetrics() {
-        return sycdQueryClient.metrics();
-    }
-
-    @GetMapping("/sycd/co2/user/{userId}")
-    public Map<String, Object> sycdUserCo2(@PathVariable long userId) {
-        return sycdQueryClient.userCo2(userId);
-    }
-
-    @GetMapping("/sycd/co2/company/{empresaId}")
-    public Map<String, Object> sycdCompanyCo2(@PathVariable long empresaId) {
-        return sycdQueryClient.companyCo2(empresaId);
-    }
-
-    @GetMapping("/sycd/co2/company/{empresaId}/user/{userId}")
-    public Map<String, Object> sycdCompanyUserCo2(@PathVariable long empresaId, @PathVariable long userId) {
-        return sycdQueryClient.companyUserCo2(empresaId, userId);
     }
 
     @GetMapping("/csv/info")

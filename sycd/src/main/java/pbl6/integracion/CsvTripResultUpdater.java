@@ -1,12 +1,6 @@
 package pbl6.integracion;
 
 import java.nio.file.Path;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -40,31 +34,10 @@ public final class CsvTripResultUpdater {
 
     public static synchronized void updateResult(int userId, String sessionId, String sycdMode,
                                                  String lat, String lon, String timestamp) {
-        updateResultAndGet(userId, sessionId, sycdMode, lat, lon, timestamp);
-    }
-
-    public static synchronized UpdateSummary updateResultAndGet(int userId, String sessionId, String sycdMode,
-                                                                 String lat, String lon, String timestamp) {
-        if (DbTripStore.isConfigured()) {
-            try {
-                UpdateSummary summary = updateResultDb(userId, sessionId, sycdMode, lat, lon, timestamp);
-                if (summary != null) {
-                    return summary;
-                }
-            } catch (Exception e) {
-                System.err.println("[DbTripResultUpdater] Error actualizando BD, uso CSV de respaldo: " + e.getMessage());
-                e.printStackTrace();
-            }
-        }
-        return updateResultCsv(userId, sessionId, sycdMode, lat, lon, timestamp);
-    }
-
-    private static UpdateSummary updateResultCsv(int userId, String sessionId, String sycdMode,
-                                                 String lat, String lon, String timestamp) {
         Path dataDir = CsvUtil.dataDir();
         try {
             List<String> headers = ensureHeaders(CsvUtil.readHeaders(dataDir, TRIPS_FILE));
-            if (headers.isEmpty()) return null;
+            if (headers.isEmpty()) return;
 
             List<Map<String, String>> trips = new ArrayList<>(CsvUtil.readRows(dataDir, TRIPS_FILE));
 
@@ -82,7 +55,7 @@ public final class CsvTripResultUpdater {
 
             if (target == null) {
                 System.err.println("[CsvTripResultUpdater] No encuentro viaje para user=" + userId + " session=" + sessionId);
-                return null;
+                return;
             }
 
             String webMode = normalizeMode(sycdMode);
@@ -117,124 +90,9 @@ public final class CsvTripResultUpdater {
                     emission.points,
                     isCarpool,
                     peopleInCarpool));
-            return new UpdateSummary(userId,
-                    target.getOrDefault("sessionID", sessionId == null ? "" : sessionId),
-                    sycdMode, webMode, km, emission.consumedKg, emission.savedKg, emission.points,
-                    isCarpool, peopleInCarpool);
         } catch (Exception e) {
             System.err.println("[CsvTripResultUpdater] Error actualizando CSV: " + e.getMessage());
             e.printStackTrace();
-        }
-        return null;
-    }
-
-
-    private static UpdateSummary updateResultDb(int userId, String sessionId, String sycdMode,
-                                                String lat, String lon, String timestamp) throws Exception {
-        List<String> headers = DbTripStore.TRIP_HEADERS;
-        List<Map<String, String>> trips = new ArrayList<>(DbTripStore.readRows("viajes_ecomove", headers, "tripID"));
-        if (trips.isEmpty()) {
-            System.err.println("[DbTripResultUpdater] No hay viajes en BD todavía");
-            return null;
-        }
-
-        Map<String, String> target = null;
-        for (Map<String, String> trip : trips) {
-            boolean sameSession = sessionId != null && !sessionId.isBlank()
-                    && sessionId.equals(trip.getOrDefault("sessionID", ""));
-            boolean sameUserPending = CsvUtil.parseLong(trip.get("userID")) == userId
-                    && !trip.getOrDefault("estadoCalculo", "").equalsIgnoreCase("CALCULADO");
-            if (sameSession || (target == null && sameUserPending)) {
-                target = trip;
-                if (sameSession) break;
-            }
-        }
-
-        if (target == null) {
-            System.err.println("[DbTripResultUpdater] No encuentro viaje en BD para user=" + userId + " session=" + sessionId);
-            return null;
-        }
-
-        String webMode = normalizeMode(sycdMode);
-        double km = CsvUtil.parseDouble(target.get("km"));
-        if (km <= 0.0) km = estimateKm(target);
-
-        long carpoolId = CsvUtil.parseLong(target.get("carpoolID"));
-        boolean isCarpool = Boolean.parseBoolean(target.getOrDefault("esCarpool", "false")) && carpoolId > 0;
-        int peopleInCarpool = isCarpool
-                ? Math.max(CsvUtil.parseLong(target.get("numPasajeros")) > 0 ? (int) CsvUtil.parseLong(target.get("numPasajeros")) : 1,
-                           DbTripStore.countCarpoolPeople(carpoolId))
-                : 1;
-
-        CarInfo userCar = DbTripStore.resolveUserCar(userId);
-        EmissionResult emission = calculateEmission(km, webMode, userCar, isCarpool, peopleInCarpool);
-
-        applyTripResult(target, webMode, km, emission, isCarpool, peopleInCarpool, lat, lon, timestamp);
-
-        if (isCarpool && "DRIVER".equalsIgnoreCase(target.getOrDefault("rolCarpool", "DRIVER"))) {
-            upsertPassengerTripsDb(headers, trips, target, carpoolId, peopleInCarpool);
-        }
-
-        DbTripStore.writeRows("viajes_ecomove", headers, trips);
-        System.out.println(String.format(Locale.US,
-                "[DbTripResultUpdater] Viaje actualizado en BD user=%d session=%s modo=%s km=%.1f co2Consumido=%.1f co2Ahorrado=%.1f puntos=%d carpool=%s pasajeros=%d",
-                userId,
-                target.getOrDefault("sessionID", ""),
-                webMode,
-                km,
-                emission.consumedKg,
-                emission.savedKg,
-                emission.points,
-                isCarpool,
-                peopleInCarpool));
-        return new UpdateSummary(userId,
-                target.getOrDefault("sessionID", sessionId == null ? "" : sessionId),
-                sycdMode, webMode, km, emission.consumedKg, emission.savedKg, emission.points,
-                isCarpool, peopleInCarpool);
-    }
-
-    private static void upsertPassengerTripsDb(List<String> headers,
-                                               List<Map<String, String>> trips,
-                                               Map<String, String> driverTrip,
-                                               long carpoolId,
-                                               int peopleInCarpool) throws Exception {
-        String driverSessionId = driverTrip.getOrDefault("sessionID", "");
-        long driverUserId = CsvUtil.parseLong(driverTrip.get("userID"));
-
-        List<Long> passengerIds = DbTripStore.passengerIds(carpoolId).stream()
-                .filter(id -> id > 0 && id != driverUserId)
-                .distinct()
-                .collect(Collectors.toList());
-
-        long nextTripId = nextTripId(trips);
-        for (long passengerId : passengerIds) {
-            Map<String, String> passengerTrip = findPassengerTrip(trips, driverSessionId, passengerId, carpoolId);
-            boolean isNew = passengerTrip == null;
-
-            if (passengerTrip == null) {
-                passengerTrip = new LinkedHashMap<>(driverTrip);
-                passengerTrip.put("tripID", String.valueOf(nextTripId++));
-                passengerTrip.put("sessionID", driverSessionId + "-P" + passengerId);
-                trips.add(passengerTrip);
-            }
-
-            passengerTrip.put("userID", String.valueOf(passengerId));
-            passengerTrip.put("carpoolID", String.valueOf(carpoolId));
-            passengerTrip.put("esCarpool", "true");
-            passengerTrip.put("numPasajeros", String.valueOf(Math.max(1, peopleInCarpool)));
-            passengerTrip.put("rolCarpool", "PASSENGER");
-            passengerTrip.put("carpoolDriverSessionID", driverSessionId);
-            passengerTrip.put("tripTypeIcon", "👥");
-            passengerTrip.put("estadoCalculo", "CALCULADO");
-
-            for (String header : headers) {
-                passengerTrip.putIfAbsent(header, "");
-            }
-
-            if (isNew) {
-                System.out.println("[DbTripResultUpdater] Viaje carpool creado en BD para pasajero user=" + passengerId
-                        + " desde session=" + driverSessionId);
-            }
         }
     }
 
@@ -549,213 +407,6 @@ public final class CsvTripResultUpdater {
         } catch (Exception ignored) {}
         return ts;
     }
-
-
-    private static final class DbTripStore {
-        private static final String DB_URL = env("DB_URL", "");
-        private static final String DB_USER = env("DB_USER", "ecomove");
-        private static final String DB_PASSWORD = env("DB_PASSWORD", "ecomove");
-
-        private static final List<String> TRIP_HEADERS = List.of(
-                "tripID", "userID", "fecha", "origen", "destino", "km", "co2", "co2ConsumidoKg",
-                "co2AhorradoKg", "modo", "duracionMin", "puntos", "icono", "tripTypeIcon", "sessionID",
-                "startTimestamp", "endTimestamp", "origenLat", "origenLon", "destinoLat", "destinoLon",
-                "duracionSeg", "durationText", "estadoCalculo", "carpoolID", "esCarpool", "numPasajeros",
-                "rolCarpool", "carpoolDriverSessionID");
-
-        private static final List<String> JOIN_HEADERS = List.of(
-                "joinID", "offerID", "userID", "riderName", "rol", "fecha", "estado");
-
-        private DbTripStore() {}
-
-        static boolean isConfigured() {
-            return DB_URL != null && !DB_URL.isBlank();
-        }
-
-        static List<Map<String, String>> readRows(String table, List<String> headers, String orderColumn) throws Exception {
-            ensureTable(table, headers);
-            String sql = "SELECT " + joinColumns(headers) + " FROM " + q(table);
-            if (orderColumn != null && !orderColumn.isBlank()) {
-                sql += " ORDER BY CAST(" + q(orderColumn) + " AS UNSIGNED)";
-            }
-
-            try (Connection cn = connection();
-                 Statement st = cn.createStatement();
-                 ResultSet rs = st.executeQuery(sql)) {
-                List<Map<String, String>> rows = new ArrayList<>();
-                while (rs.next()) {
-                    Map<String, String> row = new LinkedHashMap<>();
-                    for (String header : headers) {
-                        String value = rs.getString(header);
-                        row.put(header, value == null ? "" : value);
-                    }
-                    rows.add(row);
-                }
-                return rows;
-            }
-        }
-
-        static void writeRows(String table, List<String> headers, List<Map<String, String>> rows) throws Exception {
-            ensureTable(table, headers);
-            try (Connection cn = connection(); Statement st = cn.createStatement()) {
-                cn.setAutoCommit(false);
-                try {
-                    st.executeUpdate("DELETE FROM " + q(table));
-                    String sql = "INSERT INTO " + q(table) + " (" + joinColumns(headers) + ") VALUES (" + placeholders(headers.size()) + ")";
-                    try (PreparedStatement ps = cn.prepareStatement(sql)) {
-                        for (Map<String, String> row : rows) {
-                            for (int i = 0; i < headers.size(); i++) {
-                                ps.setString(i + 1, row.getOrDefault(headers.get(i), ""));
-                            }
-                            ps.addBatch();
-                        }
-                        ps.executeBatch();
-                    }
-                    cn.commit();
-                } catch (Exception e) {
-                    cn.rollback();
-                    throw e;
-                } finally {
-                    cn.setAutoCommit(true);
-                }
-            }
-        }
-
-        static int countCarpoolPeople(long carpoolId) throws Exception {
-            if (carpoolId <= 0) return 1;
-            ensureTable("carpool_uniones_ecomove", JOIN_HEADERS);
-            String sql = "SELECT COUNT(DISTINCT " + q("userID") + ") FROM " + q("carpool_uniones_ecomove")
-                    + " WHERE " + q("offerID") + " = ? AND UPPER(COALESCE(" + q("estado") + ", 'CONFIRMADO')) = 'CONFIRMADO'";
-            try (Connection cn = connection(); PreparedStatement ps = cn.prepareStatement(sql)) {
-                ps.setString(1, String.valueOf(carpoolId));
-                try (ResultSet rs = ps.executeQuery()) {
-                    if (rs.next()) return Math.max(1, rs.getInt(1) + 1);
-                }
-            }
-            return 1;
-        }
-
-        static List<Long> passengerIds(long carpoolId) throws Exception {
-            ensureTable("carpool_uniones_ecomove", JOIN_HEADERS);
-            String sql = "SELECT DISTINCT " + q("userID") + " FROM " + q("carpool_uniones_ecomove")
-                    + " WHERE " + q("offerID") + " = ? AND UPPER(COALESCE(" + q("estado") + ", 'CONFIRMADO')) = 'CONFIRMADO'";
-            List<Long> ids = new ArrayList<>();
-            try (Connection cn = connection(); PreparedStatement ps = cn.prepareStatement(sql)) {
-                ps.setString(1, String.valueOf(carpoolId));
-                try (ResultSet rs = ps.executeQuery()) {
-                    while (rs.next()) ids.add(CsvUtil.parseLong(rs.getString(1)));
-                }
-            }
-            return ids;
-        }
-
-        static CarInfo resolveUserCar(int userId) {
-            try (Connection cn = connection();
-                 PreparedStatement ps = cn.prepareStatement("SELECT " + q("tiene_coche") + ", " + q("modelo_cocheid")
-                         + " FROM " + q("usuarios_ecomove") + " WHERE " + q("userid") + " = ?")) {
-                ps.setInt(1, userId);
-                try (ResultSet rs = ps.executeQuery()) {
-                    if (rs.next()) {
-                        boolean hasCar = rs.getBoolean(1);
-                        String modelId = rs.getString(2);
-                        if (!hasCar || modelId == null || modelId.isBlank() || "SIN_COCHE".equalsIgnoreCase(modelId)) {
-                            return new CarInfo("SIN_COCHE", DEFAULT_CAR_KG_KM, "Referencia", false);
-                        }
-                        return resolveCarByModel(modelId);
-                    }
-                }
-            } catch (Exception e) {
-                System.err.println("[DbTripResultUpdater] No se ha podido resolver el coche del usuario en BD: " + e.getMessage());
-            }
-            return new CarInfo("DEFAULT", DEFAULT_CAR_KG_KM, "Referencia", false);
-        }
-
-        private static CarInfo resolveCarByModel(String modelId) {
-            try {
-                ensureTable("coches_ecomove", List.of("modeloCocheID", "marca", "modelo", "tipo", "emisionesKgKm"));
-                try (Connection cn = connection();
-                     PreparedStatement ps = cn.prepareStatement("SELECT " + q("tipo") + ", " + q("emisionesKgKm")
-                             + " FROM " + q("coches_ecomove") + " WHERE UPPER(" + q("modeloCocheID") + ") = UPPER(?)")) {
-                    ps.setString(1, modelId);
-                    try (ResultSet rs = ps.executeQuery()) {
-                        if (rs.next()) {
-                            String type = rs.getString(1) == null ? "" : rs.getString(1);
-                            double kgKm = Math.max(0.0, CsvUtil.parseDouble(rs.getString(2)));
-                            boolean electric = type.equalsIgnoreCase("Electrico")
-                                    || modelId.toUpperCase(Locale.ROOT).contains("EV")
-                                    || modelId.toUpperCase(Locale.ROOT).contains("TESLA")
-                                    || modelId.toUpperCase(Locale.ROOT).contains("LEAF");
-                            return new CarInfo(modelId, kgKm, type, electric);
-                        }
-                    }
-                }
-            } catch (Exception e) {
-                System.err.println("[DbTripResultUpdater] No se ha podido leer coches_ecomove: " + e.getMessage());
-            }
-            return new CarInfo(modelId, DEFAULT_CAR_KG_KM, "Referencia", false);
-        }
-
-        private static void ensureTable(String table, List<String> headers) throws Exception {
-            try (Connection cn = connection(); Statement st = cn.createStatement()) {
-                StringBuilder sql = new StringBuilder("CREATE TABLE IF NOT EXISTS ").append(q(table)).append(" (");
-                for (int i = 0; i < headers.size(); i++) {
-                    if (i > 0) sql.append(", ");
-                    sql.append(q(headers.get(i))).append(" TEXT");
-                }
-                sql.append(") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
-                st.execute(sql.toString());
-
-                for (String header : headers) {
-                    if (!columnExists(cn, table, header)) {
-                        st.execute("ALTER TABLE " + q(table) + " ADD COLUMN " + q(header) + " TEXT");
-                    }
-                }
-            }
-        }
-
-        private static boolean columnExists(Connection cn, String table, String column) throws SQLException {
-            String sql = "SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?";
-            try (PreparedStatement ps = cn.prepareStatement(sql)) {
-                ps.setString(1, table);
-                ps.setString(2, column);
-                try (ResultSet rs = ps.executeQuery()) {
-                    return rs.next() && rs.getInt(1) > 0;
-                }
-            }
-        }
-
-        private static Connection connection() throws SQLException {
-            return DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
-        }
-
-        private static String joinColumns(List<String> headers) {
-            return headers.stream().map(DbTripStore::q).reduce((a, b) -> a + ", " + b).orElse("");
-        }
-
-        private static String placeholders(int count) {
-            return "?, ".repeat(Math.max(0, count)).replaceAll(", $", "");
-        }
-
-        private static String q(String identifier) {
-            return "`" + identifier.replace("`", "``") + "`";
-        }
-
-        private static String env(String name, String fallback) {
-            String value = System.getenv(name);
-            return value == null || value.isBlank() ? fallback : value;
-        }
-    }
-
-    public record UpdateSummary(int userId,
-                                String sessionId,
-                                String sycdMode,
-                                String webMode,
-                                double km,
-                                double co2ConsumidoKg,
-                                double co2AhorradoKg,
-                                int puntos,
-                                boolean carpool,
-                                int personas) {}
 
     private record CarInfo(String modelId, double kgKm, String type, boolean electric) {}
     private record EmissionResult(double consumedKg, double savedKg, int points) {}
