@@ -2,28 +2,16 @@ package com.ecomove.service;
 
 import com.ecomove.model.CarModel;
 import com.ecomove.model.Empresa;
-import com.ecomove.model.ProfileUpdateRequest;
 import com.ecomove.model.User;
-import com.ecomove.model.Usuario;
-import com.ecomove.repository.UsuarioRepository;
-import jakarta.annotation.PostConstruct;
 import org.springframework.stereotype.Service;
 
+import com.ecomove.model.ProfileUpdateRequest;
 import java.util.ArrayList;
-import java.util.Comparator;
+
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-/**
- * Servicio de usuarios.
- *
- * Usuarios: base de datos MySQL/MariaDB mediante JPA.
- * Catálogos estáticos: CSV, porque empresas/coches siguen siendo catálogos de apoyo.
- *
- * Además mantiene data/usuarios.csv sincronizado para que el módulo SYCD, que todavía
- * se ejecuta fuera de Spring, pueda resolver el coche real del usuario al calcular CO₂.
- */
 @Service
 public class UserCsvService {
 
@@ -32,129 +20,53 @@ public class UserCsvService {
     public static final String CARS_FILE = "coches.csv";
 
     private static final List<String> USER_HEADERS = List.of(
-            "userID", "empresaID", "nombre", "apellidos", "nombreUsuario", "contrasena", "email",
-            "tieneCoche", "modeloCocheID", "puebloCiudad");
+            "userID", "empresaID", "nombre", "apellidos", "nombreUsuario", "contrasena",
+            "email", "tieneCoche", "modeloCocheID", "puebloCiudad");
 
-    private final UsuarioRepository usuarioRepository;
     private final CsvDataService csv;
 
-    public UserCsvService(UsuarioRepository usuarioRepository, CsvDataService csv) {
-        this.usuarioRepository = usuarioRepository;
+    public UserCsvService(CsvDataService csv) {
         this.csv = csv;
     }
 
-    /**
-     * Al arrancar por primera vez, importa los usuarios del CSV antiguo a la BD.
-     * Esto evita que la web se quede sin usuarios de prueba al cambiar a base de datos.
-     */
-    @PostConstruct
-    public void bootstrapUsersFromCsvIfNeeded() {
-        try {
-            if (usuarioRepository.count() > 0) {
-                mirrorUsersCsv();
-                return;
-            }
-
-            List<Map<String, String>> rows = csv.readRows(USERS_FILE);
-            if (rows.isEmpty()) {
-                seedFallbackUsers();
-            } else {
-                for (Map<String, String> row : rows) {
-                    Usuario usuario = new Usuario();
-                    long id = parseLong(row.get("userID"));
-                    if (id > 0) {
-                        usuario.setUserID(id);
-                    }
-                    usuario.setEmpresaID(parseLong(row.get("empresaID")));
-                    usuario.setNombre(row.getOrDefault("nombre", ""));
-                    usuario.setApellidos(row.getOrDefault("apellidos", ""));
-                    usuario.setNombreUsuario(row.getOrDefault("nombreUsuario", ""));
-                    usuario.setContrasena(row.getOrDefault("contrasena", ""));
-                    usuario.setEmail(row.getOrDefault("email", usuario.getNombreUsuario() + "@ecomove.local"));
-                    usuario.setTieneCoche(Boolean.parseBoolean(row.getOrDefault("tieneCoche", "false")));
-                    usuario.setModeloCocheID(row.getOrDefault("modeloCocheID", "SIN_COCHE"));
-                    usuario.setPuebloCiudad(row.getOrDefault("puebloCiudad", ""));
-
-                    if (!usuario.getNombreUsuario().isBlank()) {
-                        usuarioRepository.save(usuario);
-                    }
-                }
-            }
-
-            mirrorUsersCsv();
-            System.out.println("[UserService] Usuarios cargados desde CSV a la base de datos: " + usuarioRepository.count());
-        } catch (Exception e) {
-            System.err.println("[UserService] No se han podido inicializar usuarios desde CSV: " + e.getMessage());
-        }
-    }
-
-    private void seedFallbackUsers() {
-        Usuario jon = new Usuario(0, 101, "Jon", "Urrutia", "jonu", "123456", "jonu@ecomove.eus", true, "TESLA_MODEL_3", "Bilbo");
-        Usuario ane = new Usuario(0, 101, "Ane", "Zabala", "anez", "123456", "anez@ecomove.eus", false, "SIN_COCHE", "Getxo");
-        usuarioRepository.save(jon);
-        usuarioRepository.save(ane);
-    }
-
     public List<User> getAllUsers() {
-        return usuarioRepository.findAll().stream()
-                .sorted(Comparator.comparingLong(Usuario::getUserID))
-                .map(this::toUser)
-                .toList();
+        return csv.readRows(USERS_FILE).stream().map(this::toUser).toList();
     }
 
     public Optional<User> findById(long userId) {
-        return usuarioRepository.findById(userId).map(this::toUser);
+        return getAllUsers().stream().filter(user -> user.userID() == userId).findFirst();
     }
 
     public Optional<User> findByNombreUsuario(String nombreUsuario) {
-        if (nombreUsuario == null) return Optional.empty();
-        return usuarioRepository.findByNombreUsuario(nombreUsuario.trim()).map(this::toUser);
+        return getAllUsers().stream()
+                .filter(user -> user.nombreUsuario()
+                        .equalsIgnoreCase(nombreUsuario == null ? "" : nombreUsuario.trim()))
+                .findFirst();
     }
 
     public Optional<User> findByEmail(String email) {
-        if (email == null) return Optional.empty();
-        return usuarioRepository.findByEmail(email.trim()).map(this::toUser);
+        return getAllUsers().stream()
+                .filter(user -> user.email().equalsIgnoreCase(email == null ? "" : email.trim()))
+                .findFirst();
     }
 
     public User saveUser(User user) {
-        Usuario entity = user.userID() > 0
-                ? usuarioRepository.findById(user.userID()).orElseGet(Usuario::new)
-                : new Usuario();
-
-        applyUser(entity, user);
-        Usuario saved = usuarioRepository.save(entity);
-        mirrorUsersCsv();
-        return toUser(saved);
+        csv.appendRow(USERS_FILE, USER_HEADERS, List.of(
+                String.valueOf(user.userID()),
+                String.valueOf(user.empresaID()),
+                user.nombre(),
+                user.apellidos(),
+                user.nombreUsuario(),
+                user.contrasena(),
+                user.email(),
+                String.valueOf(user.tieneCoche()),
+                user.modeloCocheID(),
+                user.puebloCiudad()));
+        return user;
     }
 
-    /**
-     * Ya no se calcula ID manualmente: lo asigna la base de datos.
-     */
     public long nextUserId() {
-        return 0L;
-    }
-
-    public User updateProfile(ProfileUpdateRequest request) {
-        Usuario user = usuarioRepository.findById(request.userId())
-                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
-
-        if (request.empresaID() != null) user.setEmpresaID(request.empresaID());
-        if (request.nombre() != null) user.setNombre(request.nombre());
-        if (request.apellidos() != null) user.setApellidos(request.apellidos());
-        if (request.email() != null) user.setEmail(request.email());
-        if (request.puebloCiudad() != null) user.setPuebloCiudad(request.puebloCiudad());
-        if (request.tieneCoche() != null) {
-            user.setTieneCoche(request.tieneCoche());
-            user.setModeloCocheID(request.tieneCoche()
-                    ? safe(request.modeloCocheID(), "SIN_COCHE")
-                    : "SIN_COCHE");
-        } else if (request.modeloCocheID() != null) {
-            user.setModeloCocheID(request.modeloCocheID());
-        }
-
-        Usuario saved = usuarioRepository.save(user);
-        mirrorUsersCsv();
-        return toUser(saved);
+        return csv.nextId(USERS_FILE, "userID");
     }
 
     public List<Empresa> getCompanies() {
@@ -179,64 +91,67 @@ public class UserCsvService {
     }
 
     public Optional<CarModel> findCarModel(String modeloCocheID) {
-        if (modeloCocheID == null) return Optional.empty();
         return getCarModels().stream()
-                .filter(car -> car.modeloCocheID().equalsIgnoreCase(modeloCocheID.trim()))
+                .filter(car -> car.modeloCocheID().equalsIgnoreCase(modeloCocheID == null ? "" : modeloCocheID))
                 .findFirst();
     }
 
-    private void mirrorUsersCsv() {
-        try {
-            List<Map<String, String>> rows = new ArrayList<>();
-            for (User user : getAllUsers()) {
-                rows.add(Map.of(
-                        "userID", String.valueOf(user.userID()),
-                        "empresaID", String.valueOf(user.empresaID()),
-                        "nombre", safe(user.nombre(), ""),
-                        "apellidos", safe(user.apellidos(), ""),
-                        "nombreUsuario", safe(user.nombreUsuario(), ""),
-                        "contrasena", safe(user.contrasena(), ""),
-                        "email", safe(user.email(), ""),
-                        "tieneCoche", String.valueOf(user.tieneCoche()),
-                        "modeloCocheID", safe(user.modeloCocheID(), "SIN_COCHE"),
-                        "puebloCiudad", safe(user.puebloCiudad(), "")
-                ));
+    public User updateProfile(ProfileUpdateRequest request) {
+    List<Map<String, String>> rows = new ArrayList<>(csv.readRows(USERS_FILE));
+
+    for (Map<String, String> row : rows) {
+        if (parseLong(row.get("userID")) == request.userId()) {
+
+            if (request.empresaID() != null) {
+                row.put("empresaID", String.valueOf(request.empresaID()));
             }
+
+            row.put("nombre", safe(request.nombre(), row.getOrDefault("nombre", "")));
+            row.put("apellidos", safe(request.apellidos(), row.getOrDefault("apellidos", "")));
+            row.put("email", safe(request.email(), row.getOrDefault("email", "")));
+            row.put("puebloCiudad", safe(request.puebloCiudad(), row.getOrDefault("puebloCiudad", "")));
+
+            boolean tieneCoche = request.tieneCoche() != null
+                    ? request.tieneCoche()
+                    : Boolean.parseBoolean(row.getOrDefault("tieneCoche", "false"));
+
+            row.put("tieneCoche", String.valueOf(tieneCoche));
+
+            row.put("modeloCocheID", tieneCoche
+                    ? safe(request.modeloCocheID(), row.getOrDefault("modeloCocheID", "SIN_COCHE"))
+                    : "SIN_COCHE"
+            );
+
             csv.writeRows(USERS_FILE, USER_HEADERS, rows);
-        } catch (Exception e) {
-            System.err.println("[UserService] No se ha podido sincronizar usuarios.csv: " + e.getMessage());
+
+            return toUser(row);
         }
     }
 
-    private void applyUser(Usuario entity, User user) {
-        entity.setEmpresaID(user.empresaID());
-        entity.setNombre(safe(user.nombre(), ""));
-        entity.setApellidos(safe(user.apellidos(), ""));
-        entity.setNombreUsuario(safe(user.nombreUsuario(), ""));
-        entity.setContrasena(safe(user.contrasena(), ""));
-        entity.setEmail(safe(user.email(), user.nombreUsuario() + "@ecomove.local"));
-        entity.setTieneCoche(user.tieneCoche());
-        entity.setModeloCocheID(user.tieneCoche() ? safe(user.modeloCocheID(), "SIN_COCHE") : "SIN_COCHE");
-        entity.setPuebloCiudad(safe(user.puebloCiudad(), ""));
+    throw new IllegalArgumentException("Usuario no encontrado");
+}
+
+    private String safe(String value, String fallback) {
+        return value == null || value.isBlank() ? fallback : value.trim();
     }
 
-    private User toUser(Usuario usuario) {
+    private User toUser(Map<String, String> row) {
         return new User(
-                usuario.getUserID(),
-                usuario.getEmpresaID(),
-                safe(usuario.getNombre(), ""),
-                safe(usuario.getApellidos(), ""),
-                safe(usuario.getNombreUsuario(), ""),
-                safe(usuario.getContrasena(), ""),
-                safe(usuario.getEmail(), ""),
-                usuario.isTieneCoche(),
-                safe(usuario.getModeloCocheID(), "SIN_COCHE"),
-                safe(usuario.getPuebloCiudad(), ""));
+                parseLong(row.get("userID")),
+                parseLong(row.get("empresaID")),
+                row.getOrDefault("nombre", ""),
+                row.getOrDefault("apellidos", ""),
+                row.getOrDefault("nombreUsuario", ""),
+                row.getOrDefault("contrasena", ""),
+                row.getOrDefault("email", ""),
+                Boolean.parseBoolean(row.getOrDefault("tieneCoche", "false")),
+                row.getOrDefault("modeloCocheID", "SIN_COCHE"),
+                row.getOrDefault("puebloCiudad", ""));
     }
 
     private long parseLong(String value) {
         try {
-            return Long.parseLong(value == null || value.isBlank() ? "0" : value.trim());
+            return Long.parseLong(value == null || value.isBlank() ? "0" : value);
         } catch (NumberFormatException e) {
             return 0L;
         }
@@ -244,13 +159,9 @@ public class UserCsvService {
 
     private double parseDouble(String value) {
         try {
-            return Double.parseDouble(value == null || value.isBlank() ? "0" : value.trim().replace(',', '.'));
+            return Double.parseDouble(value == null || value.isBlank() ? "0" : value);
         } catch (NumberFormatException e) {
             return 0.0;
         }
-    }
-
-    private String safe(String value, String fallback) {
-        return value == null || value.isBlank() ? fallback : value;
     }
 }

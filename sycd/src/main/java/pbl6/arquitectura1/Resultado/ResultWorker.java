@@ -13,7 +13,7 @@ import com.rabbitmq.client.DefaultConsumer;
 import com.rabbitmq.client.Envelope;
 
 import pbl6.arquitectura1.Publisher.KafkaStreamConfig;
-import pbl6.arquitectura2.Config.CO2StreamConfig;
+import pbl6.integracion.CsvTripResultUpdater;
 
 public class ResultWorker {
 
@@ -48,11 +48,6 @@ public class ResultWorker {
                     "fanout",
                     true);
 
-            channel.exchangeDeclare(
-                    CO2StreamConfig.EXCHANGE_CO2_FANOUT,
-                    "fanout",
-                    true);
-
             channel.queueDeclare(
                     KafkaStreamConfig.QUEUE_EMAITZA,
                     true,
@@ -72,8 +67,7 @@ public class ResultWorker {
                     false,
                     new MiConsumer(channel));
 
-            System.out.println("[ResultWorker] Esperando resultados de Arquitectura 1...");
-            System.out.println("[ResultWorker] El CO2 se delega a Arquitectura 2 mediante fanout_co2.");
+            System.out.println("[ResultWorker] Esperando resultados...");
 
             synchronized (this) {
 
@@ -198,35 +192,22 @@ public class ResultWorker {
         int userId = Integer.parseInt(p[0]);
 
         String clasificacion = p[2];
+        String lat = p.length >= 4 ? p[3] : "";
+        String lon = p.length >= 5 ? p[4] : "";
+        String timestamp = p.length >= 6 ? p[5] : "";
+        String sessionId = p.length >= 7 ? p[6] : "";
 
-        publicarEnArquitectura2(mensaje);
+        CsvTripResultUpdater.updateResult(userId, sessionId, clasificacion, lat, lon, timestamp);
 
         System.out.println(
                 "[ResultWorker] USER "
                         + userId
                         + " → "
-                        + clasificacion
-                        + " | enviado a Arquitectura 2 para CO2/puntos");
+                        + clasificacion);
 
         System.out.println(
                 "[Lainoa] "
                         + mensaje);
-    }
-
-    private void publicarEnArquitectura2(String mensaje) {
-        try (Connection conn = factory.newConnection();
-             Channel ch = conn.createChannel()) {
-            ch.exchangeDeclare(CO2StreamConfig.EXCHANGE_CO2_FANOUT, "fanout", true);
-            ch.basicPublish(
-                    CO2StreamConfig.EXCHANGE_CO2_FANOUT,
-                    "",
-                    null,
-                    mensaje.getBytes("UTF-8"));
-            System.out.println("[ResultWorker→Arquitectura2] fanout_co2: " + mensaje);
-        } catch (Exception e) {
-            System.err.println("[ResultWorker] No se ha podido enviar a Arquitectura 2: " + e.getMessage());
-            e.printStackTrace();
-        }
     }
 
     public static void main(String[] args) {

@@ -536,22 +536,8 @@ function renderKpis(stats) {
 }
 
 function renderTrips(trips) {
-    if (!trips || !trips.length) {
-        return `
-            <div class="card trips-card">
-                <div class="page-title">
-                    <div>
-                        <h2>Azken bidaiak</h2>
-                        <p>Zure mugimendu jasangarriak · 👤 normala / 👥 karpoola</p>
-                    </div>
-                </div>
-                <p style="color:#6b7280;font-weight:800;margin:0">Oraindik ez dago bidaiarik.</p>
-            </div>
-        `;
-    }
-
     return `
-        <div class="card trips-card">
+        <div class="card">
             <div class="page-title">
                 <div>
                     <h2>Azken bidaiak</h2>
@@ -559,61 +545,63 @@ function renderTrips(trips) {
                 </div>
             </div>
 
-            <div class="trips-list" role="list" aria-label="Azken bidaiak">
-                ${trips.map(t => {
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Modua / Denbora</th>
+                        <th>Ibilbidea</th>
+                        <th>Km</th>
+                        <th>CO₂</th>
+                        <th>Data</th>
+                        <th>Egoera</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${trips.map(t => {
         const isPending = t.status !== 'CALCULADO' || t.mode === 'SIN_CALCULAR';
         const tripTypeIcon = t.tripTypeIcon || (t.carpool ? '👥' : '👤');
-        const tripTypeLabel = t.carpool ? 'Karpoola' : 'Bidaia normala';
-        const passengers = Number(t.passengers || 1);
-        const role = t.carpoolRole || 'NONE';
-        const roleText = t.carpool ? `${role} · ${passengers} pertsona` : 'bidaia normala';
-        const statusLabel = isPending ? 'Kalkulatzen' : (t.points || '+0 pts');
-        const statusClass = isPending ? 'warning' : '';
+        const roleText = t.carpool ? ` · ${escapeHtml(t.carpoolRole || 'CARPOOL')} · ${Number(t.passengers || 1)} pertsona` : ' · bidaia normala';
 
         return `
-                    <article class="trip-item ${t.carpool ? 'is-carpool' : 'is-normal'}" role="listitem">
-                        <div class="trip-cell trip-main">
-                            <div class="trip-title">
-                                <span class="trip-type-icon" aria-label="${escapeHtml(tripTypeLabel)}" title="${escapeHtml(tripTypeLabel)}">${tripTypeIcon}</span>
-                                <span aria-hidden="true">${t.icon || '🧭'}</span>
-                                <strong>${escapeHtml(t.mode || 'SIN_CALCULAR')}</strong>
-                            </div>
-                            <small class="trip-muted">⏱ ${escapeHtml(t.duration || '00:00:00')} · ${escapeHtml(roleText)}</small>
-                        </div>
+                            <tr>
+                                <td>
+                                    <strong>${tripTypeIcon} ${t.icon || '🧭'} ${escapeHtml(t.mode || 'SIN_CALCULAR')}</strong><br>
+                                    <small style="color:#6b7280;font-weight:800">
+                                        ⏱ ${escapeHtml(t.duration || '00:00:00')}${roleText}
+                                    </small>
+                                </td>
 
-                        <div class="trip-cell trip-route-cell">
-                            <div class="trip-route-line">
-                                <strong>${escapeHtml(t.from || 'Origen pendiente')}</strong>
-                                <span aria-hidden="true">→</span>
-                                <strong>${escapeHtml(t.to || 'Destino pendiente')}</strong>
-                            </div>
-                            <small class="trip-meta ${t.carpool ? 'color-green' : ''}">
-                                ${t.carpool ? `👥 Karpoola #${escapeHtml(t.carpoolId || '-')}` : '👤 Bidaia normala'}
-                            </small>
-                        </div>
+                                <td>
+                                    <strong>${escapeHtml(t.from || 'Origen pendiente')}</strong>
+                                    →
+                                    <strong>${escapeHtml(t.to || 'Destino pendiente')}</strong>
+                                    <br>
+                                    ${t.carpool ? `<small style="color:#16a34a;font-weight:900">👥 Karpoola #${escapeHtml(t.carpoolId || '-')}</small>` : `<small style="color:#6b7280;font-weight:800">👤 Bidaia normala</small>`}
+                                </td>
 
-                        <div class="trip-cell trip-km">
-                            <small class="trip-label">KM</small>
-                            <strong>${escapeHtml(t.km || '0.0 km')}</strong>
-                        </div>
+                                <td>${escapeHtml(t.km || '0.0 km')}</td>
 
-                        <div class="trip-cell trip-co2">
-                            <span class="co2-pill">Aurreztua <strong>${escapeHtml(t.co2Saved || t.co2 || '0.0 kg')}</strong></span>
-                            <small class="trip-muted">Emititua: ${escapeHtml(t.co2Consumed || '0.0 kg')}</small>
-                        </div>
+                                <td>
+                                    <span class="badge">
+                                        Aurreztua: ${escapeHtml(t.co2Saved || t.co2 || '0.0 kg')}
+                                    </span><br>
+                                    <small style="color:#6b7280;font-weight:800">
+                                        Emititua: ${escapeHtml(t.co2Consumed || '0.0 kg')}
+                                    </small>
+                                </td>
 
-                        <div class="trip-cell trip-date">
-                            <small class="trip-label">Data</small>
-                            <strong>${escapeHtml(t.date || '')}</strong>
-                        </div>
+                                <td>${escapeHtml(t.date || '')}</td>
 
-                        <div class="trip-cell trip-status">
-                            <span class="badge ${statusClass}">${escapeHtml(statusLabel)}</span>
-                        </div>
-                    </article>
-                `;
+                                <td>
+                                    <span class="badge ${isPending ? 'warning' : ''}">
+                                        ${isPending ? escapeHtml(t.status || 'Kalkulatzen') : escapeHtml(t.points || '+0 pts')}
+                                    </span>
+                                </td>
+                            </tr>
+                        `;
     }).join('')}
-            </div>
+                </tbody>
+            </table>
         </div>
     `;
 }
@@ -713,7 +701,7 @@ function renderHome() {
                 <button class="btn secondary" style="width:100%;margin-top:10px" onclick="go('#/app/karpoola')">🚗 Karpoola bilatu</button>
             </article>
         </section>
-        <section class="home-stack">
+        <section class="grid-2">
             ${renderTrips(d.recentTrips)}
             <article class="card">
                 <div class="page-title"><div><h2>CO₂ eboluzioa</h2><p>Azken 6 hilabeteak</p></div></div>
