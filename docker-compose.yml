@@ -2,10 +2,15 @@ services:
   rabbitmq:
     image: rabbitmq:3-management
     container_name: ecomove-rabbitmq
-    ports:
-      - "5671:5671"
-      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-ecomove}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-CambiarRabbit2026!}
+    # En cloud NO se publican 5671 ni 15672. Web y SYCD acceden por la red interna de Docker.
+    expose:
+      - "5671"
+      - "15672"
     volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
       - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
       - ./rabbitmq/tls:/etc/rabbitmq/ssl:ro
     healthcheck:
@@ -14,41 +19,18 @@ services:
       timeout: 5s
       retries: 10
 
-  sonarqube:
-    image: sonarqube:lts-community
-    container_name: ecomove-sonarqube
-    ports:
-      - "9000:9000"
-    environment:
-      SONAR_JDBC_URL: jdbc:postgresql://sonar-db:5432/sonar
-      SONAR_JDBC_USERNAME: sonar
-      SONAR_JDBC_PASSWORD: sonar
-    volumes:
-      - sonarqube_data:/opt/sonarqube/data
-      - sonarqube_extensions:/opt/sonarqube/extensions
-      - sonarqube_logs:/opt/sonarqube/logs
-    depends_on:
-      - sonar-db
-
-  sonar-db:
-    image: postgres:16
-    container_name: ecomove-sonar-db
-    environment:
-      POSTGRES_USER: sonar
-      POSTGRES_PASSWORD: sonar
-      POSTGRES_DB: sonar
-    volumes:
-      - sonar_db:/var/lib/postgresql/data
-
   ecomove-db:
     image: mariadb:11
     container_name: ecomove-db
     command: --max-allowed-packet=64MB
     environment:
-      MYSQL_ROOT_PASSWORD: ecomove_root
-      MYSQL_DATABASE: ecomove_db
-      MYSQL_USER: ecomove
-      MYSQL_PASSWORD: ecomove
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-CambiarRootDB2026!}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-ecomove_db}
+      MYSQL_USER: ${MYSQL_USER:-ecomove}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-CambiarDB2026!}
+    # En cloud NO se publica 3306.
+    expose:
+      - "3306"
     volumes:
       - ecomove_db:/var/lib/mysql
     healthcheck:
@@ -67,14 +49,14 @@ services:
       SERVER_PORT: 8083
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5671
-      RABBITMQ_USER: guest
-      RABBITMQ_PASS: guest
+      RABBITMQ_USER: ${RABBITMQ_USER:-ecomove}
+      RABBITMQ_PASS: ${RABBITMQ_PASS:-CambiarRabbit2026!}
       RABBITMQ_TLS_ENABLED: "true"
       RABBITMQ_TRUSTSTORE: /app/tls/truststore.jks
-      RABBITMQ_TRUSTSTORE_PASSWORD: pbl6pass
-      SPRING_DATASOURCE_URL: jdbc:mysql://ecomove-db:3306/ecomove_db?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
-      SPRING_DATASOURCE_USERNAME: ecomove
-      SPRING_DATASOURCE_PASSWORD: ecomove
+      RABBITMQ_TRUSTSTORE_PASSWORD: ${RABBITMQ_TRUSTSTORE_PASSWORD:-pbl6pass}
+      SPRING_DATASOURCE_URL: jdbc:mysql://ecomove-db:3306/${MYSQL_DATABASE:-ecomove_db}?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-ecomove}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD:-CambiarDB2026!}
       SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: org.hibernate.dialect.MariaDBDialect
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
     volumes:
@@ -93,14 +75,14 @@ services:
       DATA_DIR: /app/data
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5671
-      RABBITMQ_USER: guest
-      RABBITMQ_PASS: guest
+      RABBITMQ_USER: ${RABBITMQ_USER:-ecomove}
+      RABBITMQ_PASS: ${RABBITMQ_PASS:-CambiarRabbit2026!}
       RABBITMQ_TLS_ENABLED: "true"
       RABBITMQ_TRUSTSTORE: /app/tls/truststore.jks
-      RABBITMQ_TRUSTSTORE_PASSWORD: pbl6pass
-      DB_URL: jdbc:mariadb://ecomove-db:3306/ecomove_db?useUnicode=true&characterEncoding=utf8
-      DB_USER: ecomove
-      DB_PASSWORD: ecomove
+      RABBITMQ_TRUSTSTORE_PASSWORD: ${RABBITMQ_TRUSTSTORE_PASSWORD:-pbl6pass}
+      DB_URL: jdbc:mariadb://ecomove-db:3306/${MYSQL_DATABASE:-ecomove_db}?useUnicode=true&characterEncoding=utf8
+      DB_USER: ${MYSQL_USER:-ecomove}
+      DB_PASSWORD: ${MYSQL_PASSWORD:-CambiarDB2026!}
     volumes:
       - ./data:/app/data
       - ./rabbitmq/tls/truststore.jks:/app/tls/truststore.jks:ro
@@ -115,10 +97,12 @@ services:
     container_name: ecomove-matomo-db
     command: --max-allowed-packet=64MB
     environment:
-      MYSQL_ROOT_PASSWORD: matomo_root
-      MYSQL_DATABASE: matomo
-      MYSQL_USER: matomo
-      MYSQL_PASSWORD: matomo
+      MYSQL_ROOT_PASSWORD: ${MATOMO_MYSQL_ROOT_PASSWORD:-CambiarMatomoRoot2026!}
+      MYSQL_DATABASE: ${MATOMO_DATABASE_NAME:-matomo}
+      MYSQL_USER: ${MATOMO_DATABASE_USERNAME:-matomo}
+      MYSQL_PASSWORD: ${MATOMO_DATABASE_PASSWORD:-CambiarMatomo2026!}
+    expose:
+      - "3306"
     volumes:
       - matomo_db:/var/lib/mysql
 
@@ -131,9 +115,9 @@ services:
       MATOMO_DATABASE_HOST: matomo-db
       MATOMO_DATABASE_ADAPTER: mysql
       MATOMO_DATABASE_TABLES_PREFIX: matomo_
-      MATOMO_DATABASE_USERNAME: matomo
-      MATOMO_DATABASE_PASSWORD: matomo
-      MATOMO_DATABASE_DBNAME: matomo
+      MATOMO_DATABASE_USERNAME: ${MATOMO_DATABASE_USERNAME:-matomo}
+      MATOMO_DATABASE_PASSWORD: ${MATOMO_DATABASE_PASSWORD:-CambiarMatomo2026!}
+      MATOMO_DATABASE_DBNAME: ${MATOMO_DATABASE_NAME:-matomo}
     volumes:
       - matomo_app:/var/www/html
     depends_on:
@@ -144,12 +128,47 @@ services:
     container_name: ecomove-grafana
     ports:
       - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-CambiarGrafana2026!}
     volumes:
       - grafana_data:/var/lib/grafana
     depends_on:
       - ecomove-db
 
+  sonarqube:
+    image: sonarqube:lts-community
+    container_name: ecomove-sonarqube
+    profiles:
+      - tools
+    ports:
+      - "9000:9000"
+    environment:
+      SONAR_JDBC_URL: jdbc:postgresql://sonar-db:5432/sonar
+      SONAR_JDBC_USERNAME: sonar
+      SONAR_JDBC_PASSWORD: sonar
+      SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: "true"
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_extensions:/opt/sonarqube/extensions
+      - sonarqube_logs:/opt/sonarqube/logs
+    depends_on:
+      - sonar-db
+
+  sonar-db:
+    image: postgres:16
+    container_name: ecomove-sonar-db
+    profiles:
+      - tools
+    environment:
+      POSTGRES_USER: sonar
+      POSTGRES_PASSWORD: sonar
+      POSTGRES_DB: sonar
+    volumes:
+      - sonar_db:/var/lib/postgresql/data
+
 volumes:
+  rabbitmq_data:
   ecomove_db:
   matomo_db:
   matomo_app:
@@ -158,3 +177,4 @@ volumes:
   sonarqube_data:
   sonarqube_extensions:
   sonarqube_logs:
+  

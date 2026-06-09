@@ -10,7 +10,7 @@ import java.security.KeyStore;
 public class TLSConfig {
 
     private static final String HOST = env("RABBITMQ_HOST", "localhost");
-    private static final boolean TLS_ENABLED = Boolean.parseBoolean(env("RABBITMQ_TLS_ENABLED", "true"));
+    private static final boolean TLS_ENABLED = Boolean.parseBoolean(env("RABBITMQ_TLS_ENABLED", "false"));
     private static final int PORT = Integer.parseInt(env("RABBITMQ_PORT", TLS_ENABLED ? "5671" : "5672"));
     private static final String USER = env("RABBITMQ_USER", "guest");
     private static final String PASS = env("RABBITMQ_PASS", "guest");
