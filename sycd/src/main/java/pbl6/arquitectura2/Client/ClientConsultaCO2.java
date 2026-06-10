@@ -1,13 +1,13 @@
 package pbl6.arquitectura2.Client;
 
 import com.rabbitmq.client.*;
-
 import pbl6.arquitectura2.Config.TLSConfig;
-
 
 import java.util.Scanner;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 public class ClientConsultaCO2 {
 
@@ -16,7 +16,7 @@ public class ClientConsultaCO2 {
     private final Channel channel;
 
     public ClientConsultaCO2() throws Exception {
-        ConnectionFactory factory = TLSConfig.crearFactory();   // ← TLS
+        ConnectionFactory factory = TLSConfig.crearFactory();
         this.connection = factory.newConnection();
         this.channel = connection.createChannel();
     }
@@ -28,8 +28,8 @@ public class ClientConsultaCO2 {
         AMQP.BasicProperties props = new AMQP.BasicProperties.Builder()
                 .correlationId(corrId).replyTo(replyQueueName).build();
 
-        String mensaje = tipoConsulta + " " + idParam;
-        channel.basicPublish("", COLA_PETICIONES, props, mensaje.getBytes("UTF-8"));
+        channel.basicPublish("", COLA_PETICIONES, props,
+                (tipoConsulta + " " + idParam).getBytes("UTF-8"));
 
         final CompletableFuture<String> response = new CompletableFuture<>();
         String ctag = channel.basicConsume(replyQueueName, true, (consumerTag, delivery) -> {
@@ -38,9 +38,14 @@ public class ClientConsultaCO2 {
             }
         }, consumerTag -> {});
 
-        String resultado = response.get();
-        channel.basicCancel(ctag);
-        return resultado;
+        try {
+            String resultado = response.get(10, TimeUnit.SECONDS);
+            channel.basicCancel(ctag);
+            return resultado;
+        } catch (TimeoutException e) {
+            channel.basicCancel(ctag);
+            return "⚠ Sin respuesta (timeout 10s). ¿Está arrancado ResultWorkerCO2?";
+        }
     }
 
     public void cerrar() throws Exception {
@@ -77,7 +82,8 @@ public class ClientConsultaCO2 {
                         }
                         break;
                     case "3":
-                        seguir = false; cliente.cerrar();
+                        seguir = false;
+                        cliente.cerrar();
                         System.out.println("Cliente cerrado de forma segura.");
                         break;
                     default:
@@ -87,6 +93,8 @@ public class ClientConsultaCO2 {
         } catch (Exception e) {
             System.err.println("Error en el cliente: " + e.getMessage());
             e.printStackTrace();
-        } finally { sc.close(); }
+        } finally {
+            sc.close();
+        }
     }
 }
