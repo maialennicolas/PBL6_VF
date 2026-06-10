@@ -1,6 +1,7 @@
 package pbl6.arquitectura1.Worker;
 
 import java.io.IOException;
+import java.util.Locale;
 import java.util.Scanner;
 import java.util.concurrent.TimeoutException;
 
@@ -98,7 +99,12 @@ public class WorkerP {
                     ch.basicPublish(KafkaStreamConfig.EXCHANGE_EMAITZA, KafkaStreamConfig.QUEUE_EMAITZA, null, resultado.getBytes());
                 }
             }
-            System.out.println("[WorkerP] USER " + userId + " → " + clasificacion);
+            String horaActual = new java.text.SimpleDateFormat("HH:mm:ss.SSS").format(new java.util.Date());
+            System.out.println(String.format(Locale.US,
+                    "[%s] [WorkerP - Estrategia S] USER %d → %s (dist=%.0fm, velocidad=%.2f)",
+                    horaActual, userId, clasificacion, metros, velocidad));
+
+            
         }
     }
 
