@@ -11,18 +11,18 @@ import com.rabbitmq.client.ConnectionFactory;
 
 public class KafkaStreamConfig {
 
-    public static final String EXCHANGE_STREAM  = "stream_garraioa";
-    public static final String EXCHANGE_FANOUT  = "fanout_garraioa";
-    public static final String EXCHANGE_EMAITZA = "emaitza_garraioa";
-    public static final String EXCHANGE_LAINOA  = "lainoa";
-    public static final String EXCHANGE_DLX     = "dlx_garraioa";
+    public static final String EXCHANGE_STREAM  = "stream_garraioa";  // cola tarea // del publisher al task worker // direct
+    public static final String EXCHANGE_FANOUT  = "fanout_garraioa";  // a los workers
+    public static final String EXCHANGE_EMAITZA = "emaitza_garraioa";  // result worker
+    public static final String EXCHANGE_LAINOA  = "lainoa"; // a lainoa 1
+    public static final String EXCHANGE_DLX     = "dlx_garraioa"; // cola dlq tarea //  para el taskworker // fanout
 
-    public static final String QUEUE_TAREA   = "tarea";
-    public static final String QUEUE_KOTXEA  = "kotxea";
-    public static final String QUEUE_PUBLIKO = "publikoa";
-    public static final String QUEUE_KP      = "k_p";
-    public static final String QUEUE_EMAITZA = "emaitza";
-    public static final String QUEUE_DLQ     = "dlq_tarea";
+    public static final String QUEUE_TAREA   = "tarea";  // task worker
+    public static final String QUEUE_KOTXEA  = "kotxea"; // worker  c
+    public static final String QUEUE_PUBLIKO = "publikoa"; // worker p
+    public static final String QUEUE_KP      = "k_p"; // tren bus
+    public static final String QUEUE_EMAITZA = "emaitza"; // result worker
+    public static final String QUEUE_DLQ     = "dlq_tarea"; // 
 
     private ConnectionFactory factory;
 

@@ -54,7 +54,8 @@ public class TaskWorker {
             argsTarea.put("x-dead-letter-exchange", KafkaStreamConfig.EXCHANGE_DLX);
             argsTarea.put("x-dead-letter-routing-key", KafkaStreamConfig.QUEUE_DLQ);
             channel.queueDeclare(KafkaStreamConfig.QUEUE_TAREA, true, false, false, argsTarea);
-            channel.queueBind(KafkaStreamConfig.QUEUE_TAREA, KafkaStreamConfig.EXCHANGE_STREAM, KafkaStreamConfig.QUEUE_TAREA);
+            channel.queueBind(KafkaStreamConfig.QUEUE_TAREA, KafkaStreamConfig.EXCHANGE_STREAM,
+                    KafkaStreamConfig.QUEUE_TAREA);
 
             channel.basicQos(4);
             channel.basicConsume(KafkaStreamConfig.QUEUE_TAREA, false, new MiConsumer(channel));
@@ -82,10 +83,13 @@ public class TaskWorker {
     }
 
     public class MiConsumer extends DefaultConsumer {
-        public MiConsumer(Channel channel) { super(channel); }
+        public MiConsumer(Channel channel) {
+            super(channel);
+        }
 
         @Override
-        public void handleDelivery(String consumerTag, Envelope envelope, AMQP.BasicProperties properties, byte[] body) throws IOException {
+        public void handleDelivery(String consumerTag, Envelope envelope, AMQP.BasicProperties properties, byte[] body)
+                throws IOException {
             String mensaje = new String(body, "UTF-8");
             pool.execute(() -> {
                 try {
@@ -112,9 +116,13 @@ public class TaskWorker {
 
     private void procesarMensaje(String mensaje) throws IOException {
         long t0 = System.currentTimeMillis();
+        if (mensaje.startsWith("5 ")) {
+            throw new RuntimeException("Error simulado instantáneo para USER 5");
+        }
         String[] p = mensaje.split(" ");
 
-        if (p.length < 7) return;
+        if (p.length < 7)
+            return;
 
         int userId = Integer.parseInt(p[0]);
         int empresaId = Integer.parseInt(p[1]);
@@ -143,9 +151,11 @@ public class TaskWorker {
         if (estado.terminado) {
             long tiempoMs = estado.ultimoTimestamp - estado.timestampInicio;
             long tiempoSegundos = tiempoMs / 1000;
-            String fecha = new java.text.SimpleDateFormat("dd/MM/yyyy HH:mm:ss").format(new java.util.Date(estado.ultimoTimestamp));
+            String fecha = new java.text.SimpleDateFormat("dd/MM/yyyy HH:mm:ss")
+                    .format(new java.util.Date(estado.ultimoTimestamp));
 
-            String linea = userId + " " + empresaId + " " + estado.metrosRecorridos + " " + estado.velocidad + " " + tiempoSegundos + " " + estado.ultimaLat + " " + estado.ultimaLon + " " + estado.ultimoTimestamp;
+            String linea = userId + " " + empresaId + " " + estado.metrosRecorridos + " " + estado.velocidad + " "
+                    + tiempoSegundos + " " + estado.ultimaLat + " " + estado.ultimaLon + " " + estado.ultimoTimestamp;
 
             System.out.println("\n>>>>>>>>>>>>>>>>>>>>>>>" +
                     "\nUSER " + estado.userId + " HA TERMINADO SU RUTA" +
@@ -167,9 +177,12 @@ public class TaskWorker {
         long horas = segundos / 3600;
         long minutos = (segundos % 3600) / 60;
         long segs = segundos % 60;
-        if (horas > 0) return horas + "h " + minutos + " minutos " + segs + " segundos";
-        else if (minutos > 0) return minutos + " minutos " + segs + " segundos";
-        else return segs + " segundos";
+        if (horas > 0)
+            return horas + "h " + minutos + " minutos " + segs + " segundos";
+        else if (minutos > 0)
+            return minutos + " minutos " + segs + " segundos";
+        else
+            return segs + " segundos";
     }
 
     public static void main(String[] args) {
@@ -186,7 +199,13 @@ public class TaskWorker {
 }
 
 class EstadoUsuario {
-    int userId; int empresaId; double ultimaLat; double ultimaLon;
-    double velocidad; double metrosRecorridos; boolean terminado;
-    long ultimoTimestamp; long timestampInicio;
+    int userId;
+    int empresaId;
+    double ultimaLat;
+    double ultimaLon;
+    double velocidad;
+    double metrosRecorridos;
+    boolean terminado;
+    long ultimoTimestamp;
+    long timestampInicio;
 }
