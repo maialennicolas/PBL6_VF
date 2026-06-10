@@ -95,7 +95,9 @@ public class WorkerC {
                     ch.basicPublish(KafkaStreamConfig.EXCHANGE_EMAITZA, KafkaStreamConfig.QUEUE_EMAITZA, null, resultado.getBytes());
                 }
             }
-            System.out.println("[WorkerC] USER " + userId + " → KOTXEA");
+           String horaActual = new java.text.SimpleDateFormat("HH:mm:ss.SSS").format(new java.util.Date());
+            System.out.println("[" + horaActual + "] [WorkerC] USER " + userId + " → KOTXEA");
+        
         }
     }
 

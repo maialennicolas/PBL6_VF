@@ -100,7 +100,8 @@ public class WorkerKP {
                     ch.basicPublish(KafkaStreamConfig.EXCHANGE_EMAITZA, KafkaStreamConfig.QUEUE_EMAITZA, null, resultado.getBytes());
                 }
             }
-            System.out.println("[WorkerKP] USER " + userId + " → " + clasificacion);
+            String horaActual = new java.text.SimpleDateFormat("HH:mm:ss.SSS").format(new java.util.Date());
+            System.out.println("[" + horaActual + "] [WorkerKP] USER " + userId + " → " + clasificacion);
         }
     }
 
